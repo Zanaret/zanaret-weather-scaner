@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Station API - URL Interface</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .url-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+        .url-section h3 {
+            color: #007bff;
+            margin-top: 0;
+        }
+        .url-example {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 10px 0;
+            word-break: break-all;
+        }
+        .url-example a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .url-example a:hover {
+            text-decoration: underline;
+        }
+        .parameter-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .parameter-table th,
+        .parameter-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        .parameter-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .parameter-table .required {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .parameter-table .optional {
+            color: #6c757d;
+        }
+        .response-example {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .test-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e7f3ff;
+            border-radius: 5px;
+        }
+        .test-section h4 {
+            margin-top: 0;
+            color: #0056b3;
+        }
+        .test-button {
+            background-color: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background-color: #218838;
+        }
+        .result-display {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: white;
+            border: 1px solid #ddd;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .result-display.success {
+            border-left: 4px solid #28a745;
+        }
+        .result-display.error {
+            border-left: 4px solid #dc3545;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+        .endpoint-badge {
+            background-color: #007bff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .method-badge {
+            background-color: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌤️ Weather Station API - URL Interface</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            Access weather station data directly through URL parameters. Use these endpoints in your applications or test them in the browser.
+        </p>
+
+        <!-- Base URL Information -->
+        <div class="url-section">
+            <h3>📍 Base URL</h3>
+            <p>All API endpoints are accessed through this page with different URL parameters:</p>
+            <div class="url-example">
+                <span class="endpoint-badge">BASE</span>
+                <span class="method-badge">GET</span>
+                <a href="?action=stations" target="_blank">api-url.html?action=stations</a>
+            </div>
+        </div>
+
+        <!-- Get All Stations -->
+        <div class="url-section">
+            <h3>🏢 Get All Stations</h3>
+            <p>Retrieve information about all available weather stations in Quebec.</p>
+            
+            <div class="url-example">
+                <span class="endpoint-badge">ENDPOINT</span>
+                <span class="method-badge">GET</span>
+                <a href="?action=stations" target="_blank">api-url.html?action=stations</a>
+            </div>
+
+            <table class="parameter-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>action</td>
+                    <td>string</td>
+                    <td class="required">Yes</td>
+                    <td>Must be "stations"</td>
+                </tr>
+            </table>
+
+            <div class="response-example">{
+  "success": true,
+  "count": 200,
+  "stations": [
+    {
+      "code": "s0000123",
+      "name": "Montreal",
+      "lat": 45.53,
+      "lon": -73.56,
+      "originalLat": "45.53N",
+      "originalLon": "73.56O"
+    }
+  ],
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}</div>
+
+            <div class="test-section">
+                <h4>🧪 Test This Endpoint</h4>
+                <button class="test-button" onclick="testEndpoint('stations')">Test Get All Stations</button>
+                <div id="stationsResult" class="result-display" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Get Station by Code -->
+        <div class="url-section">
+            <h3>🔍 Get Station by Code</h3>
+            <p>Find a specific weather station by its station code.</p>
+            
+            <div class="url-example">
+                <span class="endpoint-badge">ENDPOINT</span>
+                <span class="method-badge">GET</span>
+                <a href="?action=station&code=s0000123" target="_blank">api-url.html?action=station&code=s0000123</a>
+            </div>
+
+            <table class="parameter-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>action</td>
+                    <td>string</td>
+                    <td class="required">Yes</td>
+                    <td>Must be "station"</td>
+                </tr>
+                <tr>
+                    <td>code</td>
+                    <td>string</td>
+                    <td class="required">Yes</td>
+                    <td>Station code (e.g., s0000123)</td>
+                </tr>
+            </table>
+
+            <div class="response-example">{
+  "success": true,
+  "station": {
+    "code": "s0000123",
+    "name": "Montreal",
+    "lat": 45.53,
+    "lon": -73.56,
+    "originalLat": "45.53N",
+    "originalLon": "73.56O"
+  },
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}</div>
+
+            <div class="test-section">
+                <h4>🧪 Test This Endpoint</h4>
+                <button class="test-button" onclick="testEndpoint('station', 's0000123')">Test Montreal Station</button>
+                <button class="test-button" onclick="testEndpoint('station', 's0000620')">Test Quebec Station</button>
+                <div id="stationResult" class="result-display" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Search Stations by Name -->
+        <div class="url-section">
+            <h3>🔎 Search Stations by Name</h3>
+            <p>Search for weather stations by name (partial matches supported).</p>
+            
+            <div class="url-example">
+                <span class="endpoint-badge">ENDPOINT</span>
+                <span class="method-badge">GET</span>
+                <a href="?action=search&name=Montreal" target="_blank">api-url.html?action=search&name=Montreal</a>
+            </div>
+
+            <table class="parameter-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>action</td>
+                    <td>string</td>
+                    <td class="required">Yes</td>
+                    <td>Must be "search"</td>
+                </tr>
+                <tr>
+                    <td>name</td>
+                    <td>string</td>
+                    <td class="required">Yes</td>
+                    <td>Station name to search for</td>
+                </tr>
+            </table>
+
+            <div class="response-example">{
+  "success": true,
+  "count": 2,
+  "stations": [
+    {
+      "code": "s0000123",
+      "name": "Montreal",
+      "lat": 45.53,
+      "lon": -73.56
+    },
+    {
+      "code": "s0000712",
+      "name": "Laval",
+      "lat": 45.60,
+      "lon": -73.67
+    }
+  ],
+  "searchTerm": "Montreal",
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}</div>
+
+            <div class="test-section">
+                <h4>🧪 Test This Endpoint</h4>
+                <button class="test-button" onclick="testEndpoint('search', 'Montreal')">Test Search "Montreal"</button>
+                <button class="test-button" onclick="testEndpoint('search', 'Quebec')">Test Search "Quebec"</button>
+                <div id="searchResult" class="result-display" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Get Latest XML File -->
+        <div class="url-section">
+            <h3>📄 Get Latest XML File</h3>
+            <p>Find the most recent XML weather data file for a specific station.</p>
+            
+            <div class="url-example">
+                <span class="endpoint-badge">ENDPOINT</span>
+                <span class="method-badge">GET</span>
+                <a href="?action=xml&station=s0000123" target="_blank">api-url.html?action=xml&station=s0000123</a>
+            </div>
+
+            <table class="parameter-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>action</td>
+                    <td>string</td>
+                    <td class="required">Yes</td>
+                    <td>Must be "xml"</td>
+                </tr>
+                <tr>
+                    <td>station</td>
+                    <td>string</td>
+                    <td class="required">Yes</td>
+                    <td>Station code (e.g., s0000123)</td>
+                </tr>
+            </table>
+
+            <div class="response-example">{
+  "success": true,
+  "station": "s0000123",
+  "latestFile": {
+    "url": "https://dd.meteo.gc.ca/today/citypage_weather/QC/12/s0000123_fr.xml",
+    "type": "XML File Link",
+    "hour": "12",
+    "sourceUrl": "https://dd.meteo.gc.ca/today/citypage_weather/QC/12/"
+  },
+  "foundInCurrentHour": true,
+  "foundHour": "12",
+  "totalFiles": 1,
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}</div>
+
+            <div class="test-section">
+                <h4>🧪 Test This Endpoint</h4>
+                <button class="test-button" onclick="testEndpoint('xml', 's0000123')">Test Montreal XML</button>
+                <button class="test-button" onclick="testEndpoint('xml', 's0000620')">Test Quebec XML</button>
+                <div id="xmlResult" class="result-display" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Scan URL -->
+        <div class="url-section">
+            <h3>🌐 Scan URL for Weather Data</h3>
+            <p>Scan a specific URL for XML files, timestamps, and station codes.</p>
+            
+            <div class="url-example">
+                <span class="endpoint-badge">ENDPOINT</span>
+                <span class="method-badge">GET</span>
+                <a href="?action=scan&url=https://dd.meteo.gc.ca/today/citypage_weather/QC/&hour=12" target="_blank">api-url.html?action=scan&url=https://dd.meteo.gc.ca/today/citypage_weather/QC/&hour=12</a>
+            </div>
+
+            <table class="parameter-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>action</td>
+                    <td>string</td>
+                    <td class="required">Yes</td>
+                    <td>Must be "scan"</td>
+                </tr>
+                <tr>
+                    <td>url</td>
+                    <td>string</td>
+                    <td class="required">Yes</td>
+                    <td>URL to scan (must be URL encoded)</td>
+                </tr>
+                <tr>
+                    <td>hour</td>
+                    <td>string</td>
+                    <td class="optional">No</td>
+                    <td>Specific hour to scan (00-23)</td>
+                </tr>
+            </table>
+
+            <div class="response-example">{
+  "success": true,
+  "url": "https://dd.meteo.gc.ca/today/citypage_weather/QC/12/",
+  "hour": "12",
+  "results": {
+    "xmlFiles": [
+      {
+        "url": "https://dd.meteo.gc.ca/today/citypage_weather/QC/12/s0000123_fr.xml",
+        "type": "XML File Link",
+        "context": "..."
+      }
+    ],
+    "timestamps": [
+      {
+        "raw": "20240115T123045.123",
+        "parsed": {
+          "formatted": "2024-01-15 12:30:45.123",
+          "date": "2024-01-15",
+          "time": "12:30:45"
+        },
+        "context": "..."
+      }
+    ],
+    "stationCodes": [
+      {
+        "raw": "s0000123",
+        "parsed": {
+          "formatted": "s-0000123",
+          "stationNumber": "0000123",
+          "prefix": "s"
+        },
+        "context": "..."
+      }
+    ]
+  },
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}</div>
+
+            <div class="test-section">
+                <h4>🧪 Test This Endpoint</h4>
+                <button class="test-button" onclick="testEndpoint('scan', 'https://dd.meteo.gc.ca/today/citypage_weather/QC/', '12')">Test Scan Hour 12</button>
+                <button class="test-button" onclick="testEndpoint('scan', 'https://dd.meteo.gc.ca/today/citypage_weather/QC/', 'current')">Test Scan Current Hour</button>
+                <div id="scanResult" class="result-display" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Get Station Statistics -->
+        <div class="url-section">
+            <h3>📊 Get Station Statistics</h3>
+            <p>Get overall statistics about weather stations and current data availability.</p>
+            
+            <div class="url-example">
+                <span class="endpoint-badge">ENDPOINT</span>
+                <span class="method-badge">GET</span>
+                <a href="?action=stats" target="_blank">api-url.html?action=stats</a>
+            </div>
+
+            <table class="parameter-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>action</td>
+                    <td>string</td>
+                    <td class="required">Yes</td>
+                    <td>Must be "stats"</td>
+                </tr>
+            </table>
+
+            <div class="response-example">{
+  "success": true,
+  "stats": {
+    "totalStations": 200,
+    "stationsWithData": 45,
+    "currentHour": "12",
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  }
+}</div>
+
+            <div class="test-section">
+                <h4>🧪 Test This Endpoint</h4>
+                <button class="test-button" onclick="testEndpoint('stats')">Test Get Statistics</button>
+                <div id="statsResult" class="result-display" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Error Examples -->
+        <div class="url-section">
+            <h3>❌ Error Examples</h3>
+            <p>Common error responses you might encounter:</p>
+            
+            <div class="url-example">
+                <span class="endpoint-badge">ERROR</span>
+                <span class="method-badge">400</span>
+                <a href="?action=station&code=invalid" target="_blank">api-url.html?action=station&code=invalid</a>
+            </div>
+
+            <div class="response-example">{
+  "success": false,
+  "error": "Station invalid not found",
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}</div>
+
+            <div class="url-example">
+                <span class="endpoint-badge">ERROR</span>
+                <span class="method-badge">400</span>
+                <a href="?action=unknown" target="_blank">api-url.html?action=unknown</a>
+            </div>
+
+            <div class="response-example">{
+  "success": false,
+  "error": "Invalid action: unknown",
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}</div>
+        </div>
+
+        <!-- Integration Examples -->
+        <div class="url-section">
+            <h3>🔗 Integration Examples</h3>
+            <p>How to use these URLs in your applications:</p>
+            
+            <div class="response-example">// JavaScript Fetch Example
+fetch('api-url.html?action=stations')
+  .then(response => response.json())
+  .then(data => console.log(data));
+
+// jQuery Example
+$.getJSON('api-url.html?action=station&code=s0000123', function(data) {
+    console.log(data);
+});
+
+// Python Requests Example
+import requests
+response = requests.get('api-url.html?action=xml&station=s0000123')
+data = response.json()
+
+// cURL Example
+curl "api-url.html?action=search&name=Montreal"
+
+// Direct Link Example
+&lt;a href="api-url.html?action=station&code=s0000123"&gt;Get Montreal Station&lt;/a&gt;</div>
+        </div>
+    </div>
+
+    <!-- Include the API -->
+    <script src="api.js"></script>
+    
+    <script>
+        // Initialize the API
+        const api = new WeatherStationAPI();
+
+        // Handle URL parameters on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const action = urlParams.get('action');
+            
+            if (action) {
+                handleAPIRequest(action, urlParams);
+            }
+        });
+
+        // Handle API requests based on URL parameters
+        async function handleAPIRequest(action, params) {
+            let result = { success: false, error: 'Invalid action' };
+
+            try {
+                switch (action) {
+                    case 'stations':
+                        result = await api.getAllStations();
+                        break;
+                    
+                    case 'station':
+                        const code = params.get('code');
+                        if (!code) {
+                            result = { success: false, error: 'Missing station code parameter' };
+                        } else {
+                            result = await api.getStationByCode(code);
+                        }
+                        break;
+                    
+                    case 'search':
+                        const name = params.get('name');
+                        if (!name) {
+                            result = { success: false, error: 'Missing name parameter' };
+                        } else {
+                            result = await api.searchStationsByName(name);
+                        }
+                        break;
+                    
+                    case 'xml':
+                        const station = params.get('station');
+                        if (!station) {
+                            result = { success: false, error: 'Missing station parameter' };
+                        } else {
+                            result = await api.getLatestXMLFile(station);
+                        }
+                        break;
+                    
+                    case 'scan':
+                        const url = params.get('url');
+                        const hour = params.get('hour');
+                        if (!url) {
+                            result = { success: false, error: 'Missing url parameter' };
+                        } else {
+                            let targetHour = hour;
+                            if (hour === 'current') {
+                                targetHour = api.getCurrentHour();
+                            }
+                            result = await api.scanURL(url, targetHour);
+                        }
+                        break;
+                    
+                    case 'stats':
+                        result = await api.getStationStats();
+                        break;
+                    
+                    default:
+                        result = { success: false, error: `Invalid action: ${action}` };
+                }
+            } catch (error) {
+                result = { success: false, error: error.message };
+            }
+
+            // Return JSON response
+            result.timestamp = new Date().toISOString();
+            
+            // Check if this is a web service request or direct URL request
+            const isWebService = params.get('format') === 'json' || 
+                               params.get('service') === 'true' ||
+                               params.get('direct') === 'true' ||
+                               document.referrer === '' ||
+                               navigator.userAgent.includes('curl') ||
+                               navigator.userAgent.includes('wget') ||
+                               navigator.userAgent.includes('Postman') ||
+                               navigator.userAgent.includes('python') ||
+                               navigator.userAgent.includes('node') ||
+                               window.location.href.includes('api/') ||
+                               window.location.href.includes('webservice') ||
+                               window.location.href.includes('station=');
+
+            if (isWebService) {
+                // Check if user wants direct URL (for XML endpoint)
+                if (action === 'xml' && result.success && result.latestFile) {
+                    // Return just the direct URL to the XML file
+                    document.head.innerHTML = '<meta http-equiv="Content-Type" content="text/plain; charset=utf-8">';
+                    document.body.innerHTML = result.latestFile.url;
+                    document.title = `XML URL - Station ${result.station}`;
+                } else {
+                    // Return JSON response for web service
+                    document.head.innerHTML = '<meta http-equiv="Content-Type" content="application/json">';
+                    document.body.innerHTML = JSON.stringify(result, null, 2);
+                }
+            } else {
+                // Display result in the page
+                displayResult('apiResult', result);
+            }
+        }
+
+        // Display result in the page
+        function displayResult(elementId, data) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.style.display = 'block';
+                element.className = `result-display ${data.success ? 'success' : 'error'}`;
+                element.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+        }
+
+        // Test endpoint functions
+        async function testEndpoint(action, param1, param2) {
+            const resultElementId = action + 'Result';
+            const element = document.getElementById(resultElementId);
+            
+            if (element) {
+                element.style.display = 'block';
+                element.className = 'result-display';
+                element.innerHTML = '<div class="loading">Testing endpoint...</div>';
+            }
+
+            try {
+                let result;
+                
+                switch (action) {
+                    case 'stations':
+                        result = await api.getAllStations();
+                        break;
+                    
+                    case 'station':
+                        result = await api.getStationByCode(param1);
+                        break;
+                    
+                    case 'search':
+                        result = await api.searchStationsByName(param1);
+                        break;
+                    
+                    case 'xml':
+                        result = await api.getLatestXMLFile(param1);
+                        break;
+                    
+                    case 'scan':
+                        let targetHour = param2;
+                        if (param2 === 'current') {
+                            targetHour = api.getCurrentHour();
+                        }
+                        result = await api.scanURL(param1, targetHour);
+                        break;
+                    
+                    case 'stats':
+                        result = await api.getStationStats();
+                        break;
+                    
+                    default:
+                        result = { success: false, error: 'Invalid action' };
+                }
+
+                if (element) {
+                    element.className = `result-display ${result.success ? 'success' : 'error'}`;
+                    element.innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                if (element) {
+                    element.className = 'result-display error';
+                    element.innerHTML = `<pre>{"success": false, "error": "${error.message}"}</pre>`;
+                }
+            }
+        }
+
+        // Create a global result display element
+        const resultDiv = document.createElement('div');
+        resultDiv.id = 'apiResult';
+        resultDiv.className = 'result-display';
+        resultDiv.style.display = 'none';
+        document.querySelector('.container').appendChild(resultDiv);
+    </script>
+</body>
+</html> 
