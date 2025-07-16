@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Stations Map - Quebec</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            position: relative;
+        }
+        
+        .header h1 {
+            margin: 0;
+            color: #333;
+            font-size: 24px;
+            text-align: center;
+        }
+        
+        .header p {
+            margin: 5px 0 0 0;
+            color: #666;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .main-container {
+            display: flex;
+            height: calc(100vh - 80px);
+        }
+        
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        
+        .sidebar {
+            width: 350px;
+            background: white;
+            border-left: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            background: #f8f9fa;
+        }
+        
+        .sidebar-header h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .controls button {
+            background-color: #007bff;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .controls button:hover {
+            background-color: #0056b3;
+        }
+        
+        .controls button.secondary {
+            background-color: #6c757d;
+        }
+        
+        .controls button.secondary:hover {
+            background-color: #545b62;
+        }
+        
+        .station-info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .station-info h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .station-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+        
+        .station-item {
+            padding: 12px 20px;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+        
+        .station-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .station-item.selected {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .station-details {
+            flex: 1;
+        }
+        
+        .station-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .station-code {
+            color: #666;
+            font-size: 12px;
+            font-family: monospace;
+        }
+        
+        .station-coords {
+            color: #888;
+            font-size: 11px;
+            margin-top: 2px;
+        }
+        
+        .station-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .station-actions button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background-color 0.2s;
+        }
+        
+        .station-actions button:hover {
+            background: #218838;
+        }
+        
+        .station-actions button.secondary {
+            background: #6c757d;
+        }
+        
+        .station-actions button.secondary:hover {
+            background: #545b62;
+        }
+        
+        .search-box {
+            margin-bottom: 15px;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        
+        .stats {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .stats strong {
+            color: #007bff;
+        }
+        
+        .no-results {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+            font-style: italic;
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: 300px;
+                border-left: none;
+                border-top: 1px solid #ddd;
+            }
+            
+            .map-container {
+                height: calc(100vh - 380px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🗺️ Weather Stations Map - Quebec</h1>
+        <p>Interactive map showing all weather station locations across Quebec</p>
+    </div>
+    
+    <div class="main-container">
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+        
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Station Controls</h3>
+                <div class="controls">
+                    <button onclick="centerMapOnQuebec()">📍 Center on Quebec</button>
+                    <button onclick="fitAllStations()" class="secondary">🔍 Fit All Stations</button>
+                    <button onclick="exportStationData()" class="secondary">📊 Export Data</button>
+                </div>
+                
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Search stations by name or code..." oninput="filterStations()">
+                </div>
+                
+                <div class="stats" id="stats">
+                    <strong>0</strong> stations loaded
+                </div>
+                
+                <div class="station-info" id="selectedStationInfo">
+                    <h4>Selected Station</h4>
+                    <div id="selectedStation">No station selected</div>
+                </div>
+            </div>
+            
+            <div class="station-list" id="stationList">
+                <div class="no-results">Loading stations...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Global variables
+        let map = null;
+        let stationMarkers = [];
+        let stationData = [];
+        let selectedMarker = null;
+        let filteredStations = [];
+        
+        // Station data (embedded from stations.txt)
+        const stationCoordinates = `<stations>
+<name code="s0000354" lat="48.80N" lon="79.21O">La Sarre</name>
+<name code="s0000270" lat="48.88N" lon="72.23O">Dolbeau-Mistassini</name>
+<name code="s0000314" lat="48.50N" lon="64.16O">Percé</name>
+<name code="s0000315" lat="48.35N" lon="64.68O">Chandler</name>
+<name code="s0000182" lat="46.68N" lon="71.74O">Donnacona</name>
+<name code="s0000061" lat="45.48N" lon="74.30O">Rigaud</name>
+<name code="s0000062" lat="45.42N" lon="74.04O">Saint-Lazare</name>
+<name code="s0000361" lat="45.54N" lon="73.90O">Deux-Montagnes</name>
+<name code="s0000362" lat="45.40N" lon="74.03O">Vaudreuil-Dorion</name>
+<name code="s0000363" lat="45.42N" lon="74.04O">Pincourt</name>
+<name code="s0000185" lat="46.21N" lon="70.77O">Beauceville</name>
+<name code="s0000186" lat="45.58N" lon="70.89O">Lac-Mégantic</name>
+<name code="s0000187" lat="46.13N" lon="70.36O">Saint-Georges</name>
+<name code="s0000416" lat="46.81N" lon="71.17O">Lévis</name>
+<name code="s0000194" lat="47.44N" lon="70.46O">Charlevoix</name>
+<name code="s0000320" lat="49.16N" lon="66.38O">Cap Chat</name>
+<name code="s0000321" lat="48.93N" lon="66.28O">Gaspésie (Parc national)</name>
+<name code="s0000322" lat="49.12N" lon="66.49O">Sainte-Anne-Des-Monts</name>
+<name code="s0000578" lat="60.81N" lon="78.20O">Akulivik</name>
+<name code="s0000342" lat="47.44N" lon="70.51O">Baie-Saint-Paul</name>
+<name code="s0000295" lat="48.15N" lon="69.72O">Tadoussac</name>
+<name code="s0000284" lat="47.75N" lon="71.25O">Laurentides (Réserve faunique)</name>
+<name code="s0000268" lat="48.01N" lon="65.34O">New Carlisle</name>
+<name code="s0000269" lat="48.04N" lon="65.49O">Bonaventure</name>
+<name code="s0000245" lat="47.33N" lon="77.00O">La Vérendrye (Réserve faunique)</name>
+<name code="s0000717" lat="48.10N" lon="77.80O">Val-d'Or</name>
+<name code="s0000718" lat="48.47N" lon="78.14O">Amos</name>
+<name code="s0000345" lat="45.27N" lon="72.15O">Magog</name>
+<name code="s0000393" lat="48.45N" lon="68.52O">Rimouski</name>
+<name code="s0000244" lat="46.37N" lon="75.98O">Maniwaki</name>
+<name code="s0000246" lat="46.55N" lon="75.50O">Mont-Laurier</name>
+<name code="s0000174" lat="47.62N" lon="61.52O">Îles-de-la-Madeleine</name>
+<name code="s0000333" lat="47.65N" lon="70.15O">La Malbaie</name>
+<name code="s0000334" lat="46.98N" lon="70.55O">Montmagny</name>
+<name code="s0000335" lat="47.56N" lon="69.87O">Kamouraska</name>
+<name code="s0000336" lat="47.10N" lon="70.35O">L'Islet</name>
+<name code="s0000046" lat="45.39N" lon="73.52O">Candiac</name>
+<name code="s0000048" lat="45.40N" lon="73.56O">La Prairie</name>
+<name code="s0000049" lat="45.38N" lon="73.58O">Saint-Constant</name>
+<name code="s0000050" lat="45.40N" lon="73.56O">Sainte-Catherine</name>
+<name code="s0000059" lat="45.63N" lon="72.96O">Saint-Hyacinthe</name>
+<name code="s0000180" lat="45.68N" lon="73.43O">Varennes</name>
+<name code="s0000551" lat="45.53N" lon="73.48O">Longueuil</name>
+<name code="s0000552" lat="45.44N" lon="73.25O">Richelieu</name>
+<name code="s0000553" lat="45.36N" lon="73.48O">Carignan</name>
+<name code="s0000554" lat="45.45N" lon="73.29O">Chambly</name>
+<name code="s0000555" lat="45.55N" lon="73.32O">Mont-Saint-Hilaire</name>
+<name code="s0000556" lat="45.54N" lon="73.21O">Otterburn Park</name>
+<name code="s0000557" lat="45.65N" lon="73.30O">Saint-Amable</name>
+<name code="s0000558" lat="45.55N" lon="73.32O">Saint-Basile Le Grand</name>
+<name code="s0000559" lat="45.59N" lon="73.34O">Sainte-Julie</name>
+<name code="s0000769" lat="45.38N" lon="73.55O">Delson</name>
+<name code="s0000483" lat="49.21N" lon="68.18O">Baie-Comeau</name>
+<name code="s0000484" lat="48.74N" lon="69.09O">Forestville</name>
+<name code="s0000610" lat="50.18N" lon="61.81O">Natashquan</name>
+<name code="s0000541" lat="50.22N" lon="63.17O">Havre St-Pierre</name>
+<name code="s0000574" lat="61.60N" lon="71.96O">Kangiqsujuaq</name>
+<name code="s0000575" lat="61.60N" lon="71.96O">Lac Raglan</name>
+<name code="s0000617" lat="49.76N" lon="77.63O">Matagami</name>
+<name code="s0000711" lat="60.03N" lon="77.27O">Puvirnituq</name>
+<name code="s0000586" lat="59.30N" lon="69.60O">Aupaluk</name>
+<name code="s0000598" lat="49.92N" lon="74.37O">Chibougamau</name>
+<name code="s0000738" lat="52.79N" lon="67.09O">Fermont</name>
+<name code="s0000542" lat="55.30N" lon="77.74O">Kuujjuarapik</name>
+<name code="s0000681" lat="45.40N" lon="71.90O">Sherbrooke</name>
+<name code="s0000682" lat="45.60N" lon="71.96O">Val-des-Sources</name>
+<name code="s0000319" lat="49.25N" lon="65.57O">Grande-Vallée</name>
+<name code="s0000810" lat="48.10N" lon="66.11O">Pointe-à-la-Croix</name>
+<name code="s0000811" lat="48.10N" lon="66.11O">Carleton-sur-Mer</name>
+<name code="s0000124" lat="47.44N" lon="72.78O">La Tuque</name>
+<name code="s0000125" lat="47.08N" lon="72.91O">Mauricie</name>
+<name code="s0000052" lat="45.41N" lon="72.73O">Granby</name>
+<name code="s0000063" lat="45.28N" lon="72.98O">Farnham</name>
+<name code="s0000028" lat="48.36N" lon="69.42O">Escoumins</name>
+<name code="s0000205" lat="46.69N" lon="71.36O">Bernières</name>
+<name code="s0000611" lat="45.49N" lon="75.66O">Gatineau</name>
+<name code="s0000612" lat="45.70N" lon="74.98O">Papineau</name>
+<name code="s0000614" lat="45.65N" lon="75.66O">Val-des-Monts</name>
+<name code="s0000615" lat="45.50N" lon="75.78O">Chelsea</name>
+<name code="s0000699" lat="58.69N" lon="69.94O">Tasiujaq</name>
+<name code="s0000060" lat="45.43N" lon="73.16O">Marieville</name>
+<name code="s0000202" lat="45.31N" lon="73.27O">Saint-Jean-sur-Richelieu</name>
+<name code="s0000203" lat="45.34N" lon="73.51O">Saint-Luc</name>
+<name code="s0000673" lat="48.51N" lon="72.23O">Roberval</name>
+<name code="s0000674" lat="48.63N" lon="72.32O">Lac-Saint-Jean</name>
+<name code="s0000675" lat="48.63N" lon="72.32O">Saint-Félicien</name>
+<name code="s0000055" lat="46.01N" lon="73.92O">Prévost</name>
+<name code="s0000056" lat="45.82N" lon="73.96O">Sainte-Sophie</name>
+<name code="s0000058" lat="46.01N" lon="73.92O">Saint-Sauveur</name>
+<name code="s0000600" lat="45.65N" lon="74.08O">Mirabel</name>
+<name code="s0000601" lat="45.82N" lon="73.96O">Saint-Jérôme</name>
+<name code="s0000602" lat="45.65N" lon="74.34O">Lachute</name>
+<name code="s0000603" lat="45.68N" lon="73.89O">Blainville</name>
+<name code="s0000604" lat="45.61N" lon="73.84O">Boisbriand</name>
+<name code="s0000605" lat="45.67N" lon="73.79O">Lorraine</name>
+<name code="s0000606" lat="45.58N" lon="73.93O">Rosemère</name>
+<name code="s0000607" lat="45.76N" lon="73.81O">Sainte-Anne-Des-Plaines</name>
+<name code="s0000608" lat="45.58N" lon="73.93O">Sainte-Thérèse</name>
+<name code="s0000609" lat="45.57N" lon="73.88O">Saint-Eustache</name>
+<name code="s0000599" lat="56.55N" lon="76.55O">Umiujaq</name>
+<name code="s0000793" lat="62.21N" lon="75.65O">Salluit</name>
+<name code="s0000579" lat="51.47N" lon="78.76O">Waskaganish</name>
+<name code="s0000719" lat="58.11N" lon="68.40O">Kuujjuaq</name>
+<name code="s0000532" lat="53.79N" lon="77.61O">La Grande Rivière</name>
+<name code="s0000580" lat="53.79N" lon="77.61O">Baie-James</name>
+<name code="s0000544" lat="61.05N" lon="69.63O">Quaqtaq</name>
+<name code="s0000346" lat="46.39N" lon="72.75O">Trois-Rivières</name>
+<name code="s0000347" lat="46.34N" lon="72.43O">Bécancour</name>
+<name code="s0000348" lat="46.25N" lon="72.95O">Louiseville</name>
+<name code="s0000459" lat="46.44N" lon="73.17O">Lanaudière</name>
+<name code="s0000054" lat="46.06N" lon="71.96O">Victoriaville</name>
+<name code="s0000480" lat="60.02N" lon="70.01O">Kangirsuk</name>
+<name code="s0000204" lat="46.82N" lon="71.27O">Vanier</name>
+<name code="s0000620" lat="46.81N" lon="71.22O">Québec</name>
+<name code="s0000535" lat="48.83N" lon="64.57O">Gaspé</name>
+<name code="s0000536" lat="48.83N" lon="64.57O">Forillon</name>
+<name code="s0000537" lat="48.83N" lon="64.57O">Forillon ( Parc national)</name>
+<name code="s0000044" lat="45.31N" lon="73.86O">Beauharnois</name>
+<name code="s0000635" lat="45.53N" lon="73.56O">Montréal</name>
+<name code="s0000712" lat="45.60N" lon="73.67O">Laval</name>
+<name code="s0000800" lat="50.22N" lon="66.37O">Sept-Îles</name>
+<name code="s0000801" lat="50.03N" lon="66.86O">Port-Cartier</name>
+<name code="s0000563" lat="62.42N" lon="77.92O">Ivujivik</name>
+<name code="s0000591" lat="58.70N" lon="65.95O">Kangiqsualujjuaq</name>
+<name code="s0000709" lat="46.56N" lon="72.74O">Shawinigan</name>
+<name code="s0000406" lat="48.47N" lon="67.42O">Amqui</name>
+<name code="s0000407" lat="47.98N" lon="66.96O">Matapédia</name>
+<name code="s0000408" lat="47.98N" lon="66.96O">Vallée de la Matapédia</name>
+<name code="s0000253" lat="47.74N" lon="69.54O">Rivière-du-Loup</name>
+<name code="s0000254" lat="48.12N" lon="69.17O">Trois-Pistoles</name>
+<name code="s0000255" lat="47.67N" lon="68.98O">Témiscouata</name>
+<name code="s0000121" lat="50.47N" lon="59.61O">Chevery</name>
+<name code="s0000486" lat="48.32N" lon="71.13O">Bagotville</name>
+<name code="s0000353" lat="48.24N" lon="79.02O">Rouyn-Noranda</name>
+<name code="s0000783" lat="48.59N" lon="68.19O">Mont-Joli</name>
+<name code="s0000784" lat="48.84N" lon="67.53O">Matane</name>
+<name code="s0000064" lat="46.10N" lon="71.30O">Thetford Mines</name>
+<name code="s0000094" lat="50.29N" lon="64.04O">Mingan</name>
+<name code="s0000085" lat="47.39N" lon="78.70O">Témiscamingue</name>
+<name code="s0000051" lat="45.25N" lon="73.80O">Saint-Rémi</name>
+<name code="s0000296" lat="45.13N" lon="71.80O">Coaticook</name>
+<name code="s0000260" lat="46.23N" lon="72.61O">Nicolet</name>
+<name code="s0000098" lat="45.25N" lon="74.12O">Salaberry-de-Valleyfield</name>
+<name code="s0000099" lat="45.09N" lon="74.18O">Huntingdon</name>
+<name code="s0000742" lat="45.18N" lon="74.24O">Saint-Timothée</name>
+<name code="s0000057" lat="46.00N" lon="73.73O">Saint-Lin-Laurentides</name>
+<name code="s0000142" lat="45.82N" lon="73.43O">L'Assomption</name>
+<name code="s0000143" lat="46.09N" lon="73.19O">Berthierville</name>
+<name code="s0000144" lat="45.85N" lon="73.24O">Contrecoeur</name>
+<name code="s0000145" lat="45.75N" lon="73.60O">Mascouche</name>
+<name code="s0000147" lat="46.04N" lon="73.11O">Sorel-Tracy</name>
+<name code="s0000148" lat="46.04N" lon="73.11O">Tracy</name>
+<name code="s0000149" lat="45.70N" lon="73.58O">Le Gardeur</name>
+<name code="s0000290" lat="45.70N" lon="73.63O">Terrebonne</name>
+<name code="s0000721" lat="46.02N" lon="73.44O">Joliette</name>
+<name code="s0000755" lat="45.74N" lon="73.46O">Repentigny</name>
+<name code="s0000097" lat="49.82N" lon="64.35O">Port-Menier</name>
+<name code="s0000027" lat="48.96N" lon="65.50O">Murdochville</name>
+<name code="s0000029" lat="46.68N" lon="73.92O">Saint-Michel-des-Saints</name>
+<name code="s0000053" lat="45.20N" lon="72.75O">Cowansville</name>
+<name code="s0000123" lat="50.64N" lon="68.73O">Manicouagan</name>
+<name code="s0000163" lat="45.11N" lon="72.62O">Sutton</name>
+<name code="s0000197" lat="48.54N" lon="71.65O">Alma</name>
+<name code="s0000211" lat="48.42N" lon="71.07O">Saguenay</name>
+<name code="s0000213" lat="46.12N" lon="74.60O">Mont-Tremblant</name>
+<name code="s0000214" lat="45.88N" lon="74.57O">Sainte-Agathe</name>
+<name code="s0000261" lat="45.88N" lon="72.51O">Drummondville</name>
+<name code="s0000262" lat="45.92N" lon="72.74O">Saint-Nicéphore</name>
+<name code="s0000287" lat="47.92N" lon="74.62O">Parent</name>
+<name code="s0000288" lat="48.46N" lon="73.68O">Gouin (Réservoir)</name>
+<name code="s0000478" lat="53.86N" lon="73.49O">La Grande-Quatre</name>
+<name code="s0000494" lat="51.43N" lon="57.13O">Blanc-Sablon</name>
+<name code="s0000577" lat="54.80N" lon="66.82O">Schefferville</name>
+<name code="s0000613" lat="45.91N" lon="77.07O">Pontiac</name>
+<name code="s0000627" lat="58.46N" lon="78.10O">Inukjuak</name>
+<station code="wpd" lat="47.57N" lon="71.23O">L'Étape</station>
+</stations>`;
+
+        // Initialize the map
+        function initializeMap() {
+            if (map) return;
+            
+            map = L.map('map').setView([52.0, -72.0], 6); // Center on Quebec
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // Add scale control
+            L.control.scale().addTo(map);
+        }
+        
+        // Parse station coordinates from XML format
+        function parseStationCoordinates(xmlData) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlData, 'text/xml');
+            
+            const parsedStations = [];
+            
+            // Parse both 'name' and 'station' tags
+            const nameStations = xmlDoc.getElementsByTagName('name');
+            const stationTags = xmlDoc.getElementsByTagName('station');
+            
+            // Combine both collections
+            const allStations = [...nameStations, ...stationTags];
+            
+            for (let i = 0; i < allStations.length; i++) {
+                const station = allStations[i];
+                const code = station.getAttribute('code');
+                const lat = station.getAttribute('lat');
+                const lon = station.getAttribute('lon');
+                const name = station.textContent;
+                
+                if (code && lat && lon) {
+                    // Parse latitude (e.g., "48.80N" -> 48.80)
+                    const latValue = parseFloat(lat.replace(/[NS]$/, ''));
+                    const latDirection = lat.slice(-1);
+                    const finalLat = latDirection === 'S' ? -latValue : latValue;
+                    
+                    // Parse longitude (e.g., "79.21O" -> -79.21, O = West)
+                    const lonValue = parseFloat(lon.replace(/[EO]$/, ''));
+                    const lonDirection = lon.slice(-1);
+                    const finalLon = lonDirection === 'O' ? -lonValue : lonValue;
+                    
+                    parsedStations.push({
+                        code: code,
+                        name: name,
+                        lat: finalLat,
+                        lon: finalLon,
+                        originalLat: lat,
+                        originalLon: lon
+                    });
+                }
+            }
+            
+            return parsedStations;
+        }
+        
+        // Load station data and display on map
+        function loadStationData() {
+            if (!map) {
+                initializeMap();
+            }
+            
+            // Clear existing markers
+            clearMap();
+            
+            // Parse station data
+            stationData = parseStationCoordinates(stationCoordinates);
+            filteredStations = [...stationData];
+            
+            // Add markers to map
+            stationData.forEach(station => {
+                const marker = L.marker([station.lat, station.lon])
+                    .bindPopup(`
+                        <div style="text-align: center;">
+                            <h4>${station.name}</h4>
+                            <p><strong>Code:</strong> ${station.code}</p>
+                            <p><strong>Coordinates:</strong> ${station.originalLat}, ${station.originalLon}</p>
+                            <div style="margin: 10px 0;">
+                                <a href="Weather stations.html?station=${station.code}" style="background: #28a745; color: white; text-decoration: none; padding: 5px 10px; border-radius: 3px; display: inline-block; margin: 2px;">
+                                    🌐 View Data
+                                </a>
+                                <button onclick="scanStation('${station.code}')" style="background: #007bff; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin: 2px;">
+                                    🔍 Scan Station
+                                </button>
+                            </div>
+                        </div>
+                    `)
+                    .addTo(map);
+                
+                stationMarkers.push(marker);
+                
+                // Add click event to highlight station
+                marker.on('click', function() {
+                    selectStation(station);
+                });
+            });
+            
+            // Update stats
+            updateStats();
+            
+            // Update station list
+            updateStationList();
+            
+            // Fit map to show all stations
+            if (stationData.length > 0) {
+                const group = new L.featureGroup(stationMarkers);
+                map.fitBounds(group.getBounds().pad(0.1));
+            }
+        }
+        
+        // Select a station
+        function selectStation(station) {
+            // Remove previous selection
+            if (selectedMarker) {
+                selectedMarker.setIcon(L.Icon.Default.prototype);
+            }
+            
+            // Highlight selected marker
+            const marker = stationMarkers.find(m => 
+                m.getLatLng().lat === station.lat && m.getLatLng().lng === station.lon
+            );
+            
+            if (marker) {
+                const customIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background-color: #ff4444; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                });
+                marker.setIcon(customIcon);
+                selectedMarker = marker;
+            }
+            
+            // Update station info
+            document.getElementById('selectedStation').innerHTML = `
+                <strong>${station.name}</strong><br>
+                <strong>Code:</strong> ${station.code}<br>
+                <strong>Coordinates:</strong> ${station.originalLat}, ${station.originalLon}
+            `;
+            
+            // Highlight in station list
+            highlightStationInList(station.code);
+        }
+        
+        // Highlight station in the list
+        function highlightStationInList(stationCode) {
+            const stationItems = document.querySelectorAll('.station-item');
+            stationItems.forEach(item => item.classList.remove('selected'));
+            
+            const selectedItem = document.querySelector(`[data-station="${stationCode}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('selected');
+                selectedItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+        
+        // Update station list
+        function updateStationList() {
+            const stationList = document.getElementById('stationList');
+            
+            if (filteredStations.length === 0) {
+                stationList.innerHTML = '<div class="no-results">No stations found</div>';
+                return;
+            }
+            
+            let listHTML = '';
+            filteredStations.sort((a, b) => a.name.localeCompare(b.name)).forEach(station => {
+                const stationUrl = window.location.origin + '/Weather stations.html?station=' + station.code;
+                listHTML += `
+                    <div class="station-item" data-station="${station.code}">
+                        <div class="station-details" onclick="selectStationFromList('${station.code}')">
+                            <div class="station-name">${station.name}</div>
+                            <div class="station-code">${station.code}</div>
+                            <div class="station-coords">${station.originalLat}, ${station.originalLon}</div>
+                        </div>
+                        <div class="station-actions">
+                            <button onclick="openStationData('${station.code}')" title="View station data">🌐</button>
+                            <button onclick="copyStationUrl('${stationUrl}')" class="secondary" title="Copy URL">📋</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            stationList.innerHTML = listHTML;
+        }
+        
+        // Select station from list
+        function selectStationFromList(stationCode) {
+            const station = stationData.find(s => s.code === stationCode);
+            if (station) {
+                selectStation(station);
+                
+                // Center map on station
+                map.setView([station.lat, station.lon], 10);
+            }
+        }
+        
+        // Filter stations based on search input
+        function filterStations() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            if (searchTerm === '') {
+                filteredStations = [...stationData];
+            } else {
+                filteredStations = stationData.filter(station => 
+                    station.name.toLowerCase().includes(searchTerm) ||
+                    station.code.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            updateStationList();
+            updateStats();
+        }
+        
+        // Update stats display
+        function updateStats() {
+            const statsDiv = document.getElementById('stats');
+            statsDiv.innerHTML = `<strong>${filteredStations.length}</strong> of ${stationData.length} stations`;
+        }
+        
+        // Center map on Quebec
+        function centerMapOnQuebec() {
+            if (map) {
+                map.setView([52.0, -72.0], 6);
+            }
+        }
+        
+        // Fit map to show all stations
+        function fitAllStations() {
+            if (map && stationMarkers.length > 0) {
+                const group = new L.featureGroup(stationMarkers);
+                map.fitBounds(group.getBounds().pad(0.1));
+            }
+        }
+        
+        // Clear map
+        function clearMap() {
+            if (map) {
+                stationMarkers.forEach(marker => map.removeLayer(marker));
+                stationMarkers = [];
+            }
+            selectedMarker = null;
+            stationData = [];
+            filteredStations = [];
+            
+            document.getElementById('stats').innerHTML = '<strong>0</strong> stations loaded';
+            document.getElementById('selectedStation').innerHTML = 'No station selected';
+            document.getElementById('stationList').innerHTML = '<div class="no-results">No stations loaded</div>';
+        }
+        
+        // Export station data
+        function exportStationData() {
+            if (stationData.length === 0) {
+                alert('No station data to export. Please load the station map first.');
+                return;
+            }
+            
+            const csvContent = [
+                ['Station Code', 'Station Name', 'Latitude', 'Longitude', 'Original Lat', 'Original Lon'],
+                ...stationData.map(station => [
+                    station.code,
+                    station.name,
+                    station.lat,
+                    station.lon,
+                    station.originalLat,
+                    station.originalLon
+                ])
+            ].map(row => row.join(',')).join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'quebec_weather_stations.csv';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+        
+        // Open station data in new window
+        function openStationData(stationCode) {
+            window.open(`Weather stations.html?station=${stationCode}`, '_blank');
+        }
+        
+        // Copy station URL to clipboard
+        function copyStationUrl(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                // Show temporary feedback
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = '✓';
+                button.style.background = '#28a745';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = '#6c757d';
+                }, 1000);
+            }).catch(err => {
+                console.error('Failed to copy URL:', err);
+                alert('Failed to copy URL to clipboard');
+            });
+        }
+        
+        // Scan a specific station (redirects to main scanner)
+        function scanStation(stationCode) {
+            window.open(`Weather stations.html?station=${stationCode}`, '_blank');
+        }
+        
+        // Initialize the map when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMap();
+            loadStationData();
+        });
+    </script>
+</body>
+</html> 

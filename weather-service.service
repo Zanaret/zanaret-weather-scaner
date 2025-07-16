@@ -1,0 +1,30 @@
+[Unit]
+Description=Weather Station Service
+Documentation=https://github.com/Zanaret/zanaret-weather-scaner
+After=network.target
+
+[Service]
+Type=simple
+User=weather
+Group=weather
+WorkingDirectory=/opt/weather-scanner
+ExecStart=/usr/bin/node weather-service.js start
+ExecStop=/usr/bin/node weather-service.js stop
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=weather-service
+
+# Environment variables
+Environment=NODE_ENV=production
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/weather-scanner/Stations
+
+[Install]
+WantedBy=multi-user.target 

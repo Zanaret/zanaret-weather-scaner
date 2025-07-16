@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Station Service Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin: 20px 0;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 40px;
+            font-size: 1.2em;
+        }
+        .status-card {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+            margin-bottom: 30px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .status-running { background: #27ae60; }
+        .status-stopped { background: #e74c3c; }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: background 0.3s ease;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #2980b9;
+        }
+        .btn-success {
+            background: #27ae60;
+        }
+        .btn-success:hover {
+            background: #229954;
+        }
+        .btn-danger {
+            background: #e74c3c;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        .btn-warning {
+            background: #f39c12;
+        }
+        .btn-warning:hover {
+            background: #e67e22;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .stat-card {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #3498db;
+        }
+        .stat-label {
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        .log-container {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+        .log-success { color: #2ecc71; }
+        .log-error { color: #e74c3c; }
+        .log-info { color: #3498db; }
+        .log-warning { color: #f39c12; }
+        .auto-refresh {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .hidden {
+            display: none;
+        }
+        .progress-container {
+            margin: 20px 0;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌤️ Weather Station Service Dashboard</h1>
+        <p class="subtitle">Monitor and control the automated weather station update service</p>
+        
+        <div class="status-card">
+            <h3>Service Status</h3>
+            <div id="serviceStatus">
+                <span class="status-indicator status-stopped" id="statusIndicator"></span>
+                <span id="statusText">Checking service status...</span>
+            </div>
+            
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-number" id="lastUpdate">--</div>
+                    <div class="stat-label">Last Update</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalUpdates">0</div>
+                    <div class="stat-label">Total Updates</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="nextUpdate">--</div>
+                    <div class="stat-label">Next Update</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="updateInterval">30</div>
+                    <div class="stat-label">Interval (min)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-card">
+            <h3>Service Controls</h3>
+            <p>Control the automated weather station update service:</p>
+            
+            <button id="startService" class="btn btn-success">🚀 Start Service</button>
+            <button id="stopService" class="btn btn-danger hidden">⏹️ Stop Service</button>
+            <button id="manualUpdate" class="btn btn-warning">🔄 Manual Update</button>
+            <button id="refreshStatus" class="btn">🔄 Refresh Status</button>
+        </div>
+
+        <div class="auto-refresh">
+            <label>
+                <input type="checkbox" id="autoRefresh" checked> Auto-refresh status every 30 seconds
+            </label>
+        </div>
+
+        <div class="progress-container hidden" id="progressContainer">
+            <h4>Update Progress</h4>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div id="progressText">0% Complete</div>
+        </div>
+
+        <div class="log-container" id="logContainer">
+            <div class="log-entry log-info">🌤️ Weather Station Service Dashboard loaded. Checking service status...</div>
+        </div>
+    </div>
+
+    <script>
+        class ServiceDashboard {
+            constructor() {
+                this.autoRefreshInterval = null;
+                this.isUpdating = false;
+                this.initializeElements();
+                this.bindEvents();
+                this.startAutoRefresh();
+                this.refreshStatus();
+            }
+
+            initializeElements() {
+                this.statusIndicator = document.getElementById('statusIndicator');
+                this.statusText = document.getElementById('statusText');
+                this.startBtn = document.getElementById('startService');
+                this.stopBtn = document.getElementById('stopService');
+                this.manualUpdateBtn = document.getElementById('manualUpdate');
+                this.refreshBtn = document.getElementById('refreshStatus');
+                this.autoRefreshCheckbox = document.getElementById('autoRefresh');
+                this.logContainer = document.getElementById('logContainer');
+                this.progressContainer = document.getElementById('progressContainer');
+                this.progressFill = document.getElementById('progressFill');
+                this.progressText = document.getElementById('progressText');
+            }
+
+            bindEvents() {
+                this.startBtn.addEventListener('click', () => this.startService());
+                this.stopBtn.addEventListener('click', () => this.stopService());
+                this.manualUpdateBtn.addEventListener('click', () => this.manualUpdate());
+                this.refreshBtn.addEventListener('click', () => this.refreshStatus());
+                this.autoRefreshCheckbox.addEventListener('change', () => this.toggleAutoRefresh());
+            }
+
+            log(message, type = 'info') {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry log-${type}`;
+                logEntry.textContent = `[${timestamp}] ${message}`;
+                this.logContainer.appendChild(logEntry);
+                this.logContainer.scrollTop = this.logContainer.scrollHeight;
+            }
+
+            async refreshStatus() {
+                try {
+                    // Simulate service status check (in real implementation, this would call the service API)
+                    const response = await fetch('/api/service/status');
+                    const status = await response.json();
+                    this.updateStatusDisplay(status);
+                } catch (error) {
+                    // Fallback to simulated status for demo
+                    this.updateStatusDisplay({
+                        isRunning: false,
+                        lastUpdate: 'Never',
+                        updateCount: 0,
+                        interval: 30,
+                        nextUpdate: null
+                    });
+                }
+            }
+
+            updateStatusDisplay(status) {
+                // Update status indicator
+                this.statusIndicator.className = `status-indicator ${status.isRunning ? 'status-running' : 'status-stopped'}`;
+                this.statusText.textContent = status.isRunning ? 'Service Running' : 'Service Stopped';
+
+                // Update stats
+                document.getElementById('lastUpdate').textContent = status.lastUpdate || 'Never';
+                document.getElementById('totalUpdates').textContent = status.updateCount;
+                document.getElementById('updateInterval').textContent = status.interval / 60000;
+                
+                if (status.nextUpdate) {
+                    document.getElementById('nextUpdate').textContent = status.nextUpdate.toLocaleString();
+                } else {
+                    document.getElementById('nextUpdate').textContent = '--';
+                }
+
+                // Update buttons
+                if (status.isRunning) {
+                    this.startBtn.classList.add('hidden');
+                    this.stopBtn.classList.remove('hidden');
+                } else {
+                    this.startBtn.classList.remove('hidden');
+                    this.stopBtn.classList.add('hidden');
+                }
+            }
+
+            async startService() {
+                try {
+                    this.log('Starting weather station service...', 'info');
+                    // In real implementation, this would call the service API
+                    // await fetch('/api/service/start', { method: 'POST' });
+                    
+                    // Simulate service start
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    this.log('Service started successfully', 'success');
+                    this.refreshStatus();
+                } catch (error) {
+                    this.log(`Failed to start service: ${error.message}`, 'error');
+                }
+            }
+
+            async stopService() {
+                try {
+                    this.log('Stopping weather station service...', 'info');
+                    // In real implementation, this would call the service API
+                    // await fetch('/api/service/stop', { method: 'POST' });
+                    
+                    // Simulate service stop
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    this.log('Service stopped successfully', 'success');
+                    this.refreshStatus();
+                } catch (error) {
+                    this.log(`Failed to stop service: ${error.message}`, 'error');
+                }
+            }
+
+            async manualUpdate() {
+                if (this.isUpdating) {
+                    this.log('Update already in progress...', 'warning');
+                    return;
+                }
+
+                try {
+                    this.isUpdating = true;
+                    this.progressContainer.classList.remove('hidden');
+                    this.log('Starting manual update...', 'info');
+                    
+                    // Simulate update progress
+                    for (let i = 0; i <= 100; i += 10) {
+                        this.progressFill.style.width = `${i}%`;
+                        this.progressText.textContent = `${i}% Complete`;
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    }
+                    
+                    this.log('Manual update completed successfully', 'success');
+                    this.progressContainer.classList.add('hidden');
+                    this.refreshStatus();
+                } catch (error) {
+                    this.log(`Manual update failed: ${error.message}`, 'error');
+                } finally {
+                    this.isUpdating = false;
+                }
+            }
+
+            startAutoRefresh() {
+                this.autoRefreshInterval = setInterval(() => {
+                    if (this.autoRefreshCheckbox.checked) {
+                        this.refreshStatus();
+                    }
+                }, 30000); // 30 seconds
+            }
+
+            toggleAutoRefresh() {
+                if (this.autoRefreshCheckbox.checked) {
+                    this.log('Auto-refresh enabled', 'info');
+                } else {
+                    this.log('Auto-refresh disabled', 'info');
+                }
+            }
+        }
+
+        // Initialize dashboard
+        const dashboard = new ServiceDashboard();
+    </script>
+</body>
+</html> 

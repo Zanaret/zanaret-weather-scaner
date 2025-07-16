@@ -172,6 +172,20 @@
             </ul>
         </div>
 
+        <hr>
+<section id="github-actions-service">
+  <h2>Automated Weather Service (GitHub Actions)</h2>
+  <p>
+    This project now includes a <b>GitHub Actions workflow</b> that automatically updates the latest Environment Canada weather report links for all Quebec stations every 30 minutes.<br>
+    The workflow runs in the cloud and keeps the <code>Stations</code> folder up to date with the most recent weather data.
+  </p>
+  <ul>
+    <li>View the workflow: <a href="https://github.com/Zanaret/zanaret-weather-scaner/actions" target="_blank">GitHub Actions &rarr;</a></li>
+    <li>How it works: On a schedule, the service fetches the latest weather XML links and commits updates to this repository.</li>
+    <li>Manual trigger: You can also run the workflow manually from the GitHub Actions tab.</li>
+  </ul>
+</section>
+
         <div class="footer">
             <p>Powered by Environment Canada weather data | Built with ❤️ for Quebec weather monitoring</p>
             <p><a href="https://github.com/Zanaret/zanaret-weather-scaner" target="_blank">View on GitHub</a></p>
