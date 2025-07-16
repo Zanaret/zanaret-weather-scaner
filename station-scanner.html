@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Station Scanner</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin: 20px 0;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 40px;
+            font-size: 1.2em;
+        }
+        .control-panel {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+            margin-bottom: 30px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: background 0.3s ease;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #2980b9;
+        }
+        .btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        .btn-danger {
+            background: #e74c3c;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        .btn-success {
+            background: #27ae60;
+        }
+        .btn-success:hover {
+            background: #229954;
+        }
+        .progress-container {
+            margin: 20px 0;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            text-align: center;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .log-container {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+        .log-success { color: #2ecc71; }
+        .log-error { color: #e74c3c; }
+        .log-info { color: #3498db; }
+        .log-warning { color: #f39c12; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .stat-card {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #3498db;
+        }
+        .stat-label {
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        .results-section {
+            margin: 30px 0;
+        }
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .results-table th,
+        .results-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .results-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .status-success { color: #27ae60; }
+        .status-error { color: #e74c3c; }
+        .hidden {
+            display: none;
+        }
+        .download-section {
+            background: #e8f5e8;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #27ae60;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌤️ Weather Station Scanner</h1>
+        <p class="subtitle">Scan all weather stations and generate individual files with their most recent weather report links</p>
+        
+        <div class="control-panel">
+            <h3>Scanner Controls</h3>
+            <p>This tool will scan all weather stations and create individual files for each station in the Stations folder.</p>
+            
+            <button id="startScan" class="btn btn-success">🚀 Start Scan</button>
+            <button id="stopScan" class="btn btn-danger hidden">⏹️ Stop Scan</button>
+            <button id="clearLog" class="btn">🗑️ Clear Log</button>
+            <button id="downloadAll" class="btn hidden">📥 Download All Files</button>
+        </div>
+
+        <div class="progress-container hidden" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">0% Complete</div>
+        </div>
+
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalStations">0</div>
+                <div class="stat-label">Total Stations</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="processedStations">0</div>
+                <div class="stat-label">Processed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="successfulScans">0</div>
+                <div class="stat-label">Successful</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="failedScans">0</div>
+                <div class="stat-label">Failed</div>
+            </div>
+        </div>
+
+        <div class="log-container" id="logContainer">
+            <div class="log-entry log-info">🌤️ Weather Station Scanner ready. Click "Start Scan" to begin.</div>
+        </div>
+
+        <div class="results-section hidden" id="resultsSection">
+            <h3>📊 Scan Results</h3>
+            <div class="download-section hidden" id="downloadSection">
+                <h4>📁 Files Generated</h4>
+                <p>All station files have been generated. You can download them individually or use the "Download All Files" button.</p>
+            </div>
+            
+            <h4>✅ Successful Scans</h4>
+            <table class="results-table" id="successTable">
+                <thead>
+                    <tr>
+                        <th>Station Name</th>
+                        <th>Station Code</th>
+                        <th>Status</th>
+                        <th>Weather Data URL</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <h4>❌ Failed Scans</h4>
+            <table class="results-table" id="errorTable">
+                <thead>
+                    <tr>
+                        <th>Station Name</th>
+                        <th>Station Code</th>
+                        <th>Error</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="station-scanner.js"></script>
+    <script>
+        class WebStationScanner extends StationScanner {
+            constructor() {
+                super();
+                this.isScanning = false;
+                this.shouldStop = false;
+                this.logContainer = document.getElementById('logContainer');
+                this.progressContainer = document.getElementById('progressContainer');
+                this.progressFill = document.getElementById('progressFill');
+                this.progressText = document.getElementById('progressText');
+                this.resultsSection = document.getElementById('resultsSection');
+                this.downloadSection = document.getElementById('downloadSection');
+                this.successTable = document.getElementById('successTable').getElementsByTagName('tbody')[0];
+                this.errorTable = document.getElementById('errorTable').getElementsByTagName('tbody')[0];
+            }
+
+            // Override console.log to also display in UI
+            log(message, type = 'info') {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry log-${type}`;
+                logEntry.textContent = `[${timestamp}] ${message}`;
+                this.logContainer.appendChild(logEntry);
+                this.logContainer.scrollTop = this.logContainer.scrollHeight;
+                
+                // Also log to console
+                console.log(message);
+            }
+
+            // Override saveFile for browser environment
+            async saveFile(filepath, content) {
+                const filename = filepath.split('/').pop();
+                const blob = new Blob([content], { type: 'text/markdown' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                this.log(`📄 Generated file: ${filename}`, 'success');
+            }
+
+            // Override createStationFile to update UI
+            async createStationFile(station) {
+                if (this.shouldStop) {
+                    throw new Error('Scan stopped by user');
+                }
+
+                try {
+                    this.log(`🔍 Scanning station: ${station.name} (${station.code})`, 'info');
+                    
+                    const xmlResponse = await this.api.getLatestXMLFile(station.code);
+                    
+                    let status = '❌';
+                    let hasData = false;
+                    
+                    if (xmlResponse.success && xmlResponse.latestFile) {
+                        status = '✅';
+                        hasData = true;
+                        this.log(`  ${status} ${station.name} - Data found`, 'success');
+                    } else {
+                        this.log(`  ${status} ${station.name} - No data available`, 'warning');
+                    }
+                    
+                    // Update progress
+                    this.processedCount++;
+                    const progress = ((this.processedCount / this.totalStations) * 100).toFixed(1);
+                    this.progressFill.style.width = `${progress}%`;
+                    this.progressText.textContent = `${progress}% Complete (${this.processedCount}/${this.totalStations})`;
+                    
+                    // Update stats
+                    this.updateStats();
+                    
+                    // Add to results
+                    this.scanResults.push({
+                        station: station,
+                        success: xmlResponse.success,
+                        hasData: hasData,
+                        filename: `${station.name.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_')}_${station.code}.md`,
+                        url: xmlResponse.success ? xmlResponse.latestFile.url : null,
+                        error: xmlResponse.error || null
+                    });
+                    
+                    // Add delay to avoid overwhelming the server
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                } catch (error) {
+                    this.log(`❌ Error processing station ${station.name}: ${error.message}`, 'error');
+                    
+                    this.scanResults.push({
+                        station: station,
+                        success: false,
+                        hasData: false,
+                        filename: null,
+                        url: null,
+                        error: error.message
+                    });
+                }
+            }
+
+            // Update statistics display
+            updateStats() {
+                document.getElementById('totalStations').textContent = this.totalStations;
+                document.getElementById('processedStations').textContent = this.processedCount;
+                document.getElementById('successfulScans').textContent = this.scanResults.filter(r => r.success).length;
+                document.getElementById('failedScans').textContent = this.scanResults.filter(r => !r.success).length;
+            }
+
+            // Display results in tables
+            displayResults() {
+                const successfulScans = this.scanResults.filter(r => r.success);
+                const failedScans = this.scanResults.filter(r => !r.success);
+                
+                // Clear existing rows
+                this.successTable.innerHTML = '';
+                this.errorTable.innerHTML = '';
+                
+                // Add successful scans
+                successfulScans.forEach(result => {
+                    const row = this.successTable.insertRow();
+                    row.innerHTML = `
+                        <td>${result.station.name}</td>
+                        <td>${result.station.code}</td>
+                        <td class="status-success">✅ Success</td>
+                        <td><a href="${result.url}" target="_blank">View Data</a></td>
+                    `;
+                });
+                
+                // Add failed scans
+                failedScans.forEach(result => {
+                    const row = this.errorTable.insertRow();
+                    row.innerHTML = `
+                        <td>${result.station.name}</td>
+                        <td>${result.station.code}</td>
+                        <td class="status-error">❌ ${result.error}</td>
+                    `;
+                });
+                
+                this.resultsSection.classList.remove('hidden');
+                this.downloadSection.classList.remove('hidden');
+            }
+
+            // Override scanAllStations for web interface
+            async scanAllStations() {
+                try {
+                    this.isScanning = true;
+                    this.shouldStop = false;
+                    this.scanResults = [];
+                    this.processedCount = 0;
+                    
+                    this.log('🚀 Starting Weather Station Scan...', 'info');
+                    this.progressContainer.classList.remove('hidden');
+                    
+                    // Initialize and get all stations
+                    const stations = await this.initialize();
+                    
+                    // Process each station
+                    for (let i = 0; i < stations.length; i++) {
+                        if (this.shouldStop) {
+                            this.log('⏹️ Scan stopped by user', 'warning');
+                            break;
+                        }
+                        
+                        const station = stations[i];
+                        await this.createStationFile(station);
+                    }
+                    
+                    // Display results
+                    this.displayResults();
+                    
+                    this.log('🎉 Weather Station Scan Complete!', 'success');
+                    this.log(`📊 Total stations processed: ${this.totalStations}`, 'info');
+                    this.log(`✅ Successful scans: ${this.scanResults.filter(r => r.success).length}`, 'success');
+                    this.log(`❌ Failed scans: ${this.scanResults.filter(r => !r.success).length}`, 'error');
+                    
+                } catch (error) {
+                    this.log(`💥 Scanner failed: ${error.message}`, 'error');
+                } finally {
+                    this.isScanning = false;
+                    this.updateUI();
+                }
+            }
+
+            // Update UI based on scanning state
+            updateUI() {
+                const startBtn = document.getElementById('startScan');
+                const stopBtn = document.getElementById('stopScan');
+                const downloadBtn = document.getElementById('downloadAll');
+                
+                if (this.isScanning) {
+                    startBtn.classList.add('hidden');
+                    stopBtn.classList.remove('hidden');
+                    downloadBtn.classList.add('hidden');
+                } else {
+                    startBtn.classList.remove('hidden');
+                    stopBtn.classList.add('hidden');
+                    if (this.scanResults.length > 0) {
+                        downloadBtn.classList.remove('hidden');
+                    }
+                }
+            }
+
+            // Stop scanning
+            stopScan() {
+                this.shouldStop = true;
+                this.log('⏹️ Stopping scan...', 'warning');
+            }
+
+            // Download all generated files
+            downloadAllFiles() {
+                this.scanResults.forEach(result => {
+                    if (result.filename) {
+                        let content = '';
+                        if (result.hasData) {
+                            content = `# ${result.station.name} Weather Station
+
+**Station Code:** ${result.station.code}
+**Location:** ${result.station.originalLat}, ${result.station.originalLon}
+**Coordinates:** ${result.station.lat.toFixed(4)}°N, ${result.station.lon.toFixed(4)}°W
+
+## Most Recent Weather Report
+
+**Status:** ✅ Data Available
+**Weather Data URL:** ${result.url}
+
+### Direct Link
+[View Latest Weather Data](${result.url})
+
+---
+*Generated by Weather Station Scanner on ${new Date().toLocaleString()}*
+*Data source: Environment Canada (dd.meteo.gc.ca)*`;
+                        } else {
+                            content = `# ${result.station.name} Weather Station
+
+**Station Code:** ${result.station.code}
+**Location:** ${result.station.originalLat}, ${result.station.originalLon}
+**Coordinates:** ${result.station.lat.toFixed(4)}°N, ${result.station.lon.toFixed(4)}°W
+
+## Weather Report Status
+
+**Status:** ❌ No Data Available
+**Error:** ${result.error || 'Unknown error'}
+
+---
+*Generated by Weather Station Scanner on ${new Date().toLocaleString()}*
+*Data source: Environment Canada (dd.meteo.gc.ca)*`;
+                        }
+                        
+                        this.saveFile(`./Stations/${result.filename}`, content);
+                    }
+                });
+            }
+        }
+
+        // Initialize scanner
+        const scanner = new WebStationScanner();
+
+        // Event listeners
+        document.getElementById('startScan').addEventListener('click', () => {
+            scanner.scanAllStations();
+        });
+
+        document.getElementById('stopScan').addEventListener('click', () => {
+            scanner.stopScan();
+        });
+
+        document.getElementById('clearLog').addEventListener('click', () => {
+            document.getElementById('logContainer').innerHTML = '<div class="log-entry log-info">🌤️ Log cleared.</div>';
+        });
+
+        document.getElementById('downloadAll').addEventListener('click', () => {
+            scanner.downloadAllFiles();
+        });
+
+        // Initialize UI
+        scanner.updateUI();
+    </script>
+</body>
+</html> 
