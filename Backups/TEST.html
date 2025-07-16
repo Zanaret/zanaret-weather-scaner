@@ -1,0 +1,5729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XML File Scanner</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="url"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input[type="url"]:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .results {
+            margin-top: 30px;
+        }
+        .result-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .result-item h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .result-item a {
+            color: #007bff;
+            text-decoration: none;
+            word-break: break-all;
+        }
+        .result-item a:hover {
+            text-decoration: underline;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #dc3545;
+            margin-top: 20px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #28a745;
+            margin-top: 20px;
+        }
+        .stats {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 XML File, Timestamp & Station Code Scanner</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            Enter a webpage URL to scan for XML files, timestamp patterns (YYYYMMDDTHHMMSS.MSS), and station codes (s0000XXX)
+        </p>
+        
+        <div class="input-group">
+            <label for="urlInput">Webpage URL:</label>
+            <input type="url" id="urlInput" placeholder="https://dd.meteo.gc.ca/today/citypage_weather/QC/" value="https://dd.meteo.gc.ca/today/citypage_weather/QC/">
+        </div>
+        
+        <div class="input-group">
+            <label for="hourSelect">Hour (24h format):</label>
+            <select id="hourSelect">
+                <option value="current">🕐 Current Hour (Auto-detect)</option>
+                <option value="">All hours</option>
+                <option value="00">00 (Midnight)</option>
+                <option value="01">01 (1 AM)</option>
+                <option value="02">02 (2 AM)</option>
+                <option value="03">03 (3 AM)</option>
+                <option value="04">04 (4 AM)</option>
+                <option value="05">05 (5 AM)</option>
+                <option value="06">06 (6 AM)</option>
+                <option value="07">07 (7 AM)</option>
+                <option value="08">08 (8 AM)</option>
+                <option value="09">09 (9 AM)</option>
+                <option value="10">10 (10 AM)</option>
+                <option value="11">11 (11 AM)</option>
+                <option value="12">12 (Noon)</option>
+                <option value="13">13 (1 PM)</option>
+                <option value="14">14 (2 PM)</option>
+                <option value="15">15 (3 PM)</option>
+                <option value="16">16 (4 PM)</option>
+                <option value="17">17 (5 PM)</option>
+                <option value="18">18 (6 PM)</option>
+                <option value="19">19 (7 PM)</option>
+                <option value="20">20 (8 PM)</option>
+                <option value="21">21 (9 PM)</option>
+                <option value="22">22 (10 PM)</option>
+                <option value="23">23 (11 PM)</option>
+            </select>
+        </div>
+        
+        <button onclick="scanForXML()" id="scanBtn">Scan for XML Files, Timestamps & Station Codes</button>
+        <button onclick="scanCurrentHour()" id="scanCurrentBtn" style="margin-top: 10px; background-color: #ffc107; color: #000;">🕐 Scan Current Hour</button>
+        <button onclick="startAutoRefresh()" id="autoRefreshBtn" style="margin-top: 10px; background-color: #17a2b8;">🔄 Auto-Refresh Current Hour</button>
+        <button onclick="scanAllHours()" id="scanAllBtn" style="margin-top: 10px; background-color: #28a745;">Scan All Hours</button>
+        
+        <div id="results" class="results"></div>
+    </div>
+
+    <script>
+        async function scanForXML() {
+            const urlInput = document.getElementById('urlInput');
+            const hourSelect = document.getElementById('hourSelect');
+            const scanBtn = document.getElementById('scanBtn');
+            const resultsDiv = document.getElementById('results');
+            
+            let url = urlInput.value.trim();
+            const selectedHour = hourSelect.value;
+            
+            // If "current" is selected, get the current hour
+            if (selectedHour === 'current') {
+                const now = new Date();
+                const currentHour = now.getUTCHours().toString().padStart(2, '0');
+                url = url.endsWith('/') ? url + currentHour + '/' : url + '/' + currentHour + '/';
+            }
+            // If a specific hour is selected, append it to the URL
+            else if (selectedHour) {
+                url = url.endsWith('/') ? url + selectedHour + '/' : url + '/' + selectedHour + '/';
+            }
+            
+            if (!url) {
+                showError('Please enter a valid URL');
+                return;
+            }
+            
+            if (!isValidUrl(url)) {
+                showError('Please enter a valid URL starting with http:// or https://');
+                return;
+            }
+            
+            // Disable button and show loading
+            scanBtn.disabled = true;
+            scanBtn.textContent = 'Scanning...';
+            resultsDiv.innerHTML = '<div class="loading">Scanning webpage for XML files and timestamps...</div>';
+            
+            try {
+                // Use a CORS proxy to bypass CORS restrictions
+                const proxyUrl = 'https://api.allorigins.win/raw?url=';
+                const response = await fetch(proxyUrl + encodeURIComponent(url));
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const htmlContent = await response.text();
+                const results = findXMLFiles(htmlContent, url);
+                
+                displayResults(results, url);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showError(`Failed to scan the webpage: ${error.message}. This might be due to CORS restrictions or the website not being accessible.`);
+            } finally {
+                // Re-enable button
+                scanBtn.disabled = false;
+                scanBtn.textContent = 'Scan for XML Files & Timestamps';
+            }
+        }
+        
+        function findXMLFiles(htmlContent, baseUrl) {
+            const xmlFiles = [];
+            const baseUrlObj = new URL(baseUrl);
+            
+            // Regular expressions to find XML file references
+            const patterns = [
+                // Direct XML file links
+                /href=["']([^"']*\.xml)["']/gi,
+                /src=["']([^"']*\.xml)["']/gi,
+                // XML file references in various contexts
+                /["']([^"']*\.xml)["']/gi,
+                // XML content type references
+                /content-type["']?\s*:\s*["']?application\/xml["']?/gi,
+                // XML namespace declarations
+                /xmlns=["']([^"']*)["']/gi,
+                // XML processing instructions
+                /<\?xml[^>]*\?>/gi,
+                // XML tags
+                /<[^>]*xml[^>]*>/gi
+            ];
+            
+            // Regular expression to find timestamp patterns (YYYYMMDDTHHMMSS.MSS)
+            const timestampPattern = /(\d{8}T\d{6}\.\d{3})/g;
+            
+            // Regular expression to find station codes (s0000XXX)
+            const stationCodePattern = /(s\d{7})/gi;
+            
+            // Find all timestamps in the content
+            const timestamps = [];
+            let timestampMatch;
+            while ((timestampMatch = timestampPattern.exec(htmlContent)) !== null) {
+                const timestamp = timestampMatch[1];
+                const parsedTime = parseTimestamp(timestamp);
+                timestamps.push({
+                    raw: timestamp,
+                    parsed: parsedTime,
+                    context: getContext(htmlContent, timestampMatch.index, 100)
+                });
+            }
+            
+            // Find all station codes in the content
+            const stationCodes = [];
+            let stationMatch;
+            while ((stationMatch = stationCodePattern.exec(htmlContent)) !== null) {
+                const stationCode = stationMatch[1];
+                const parsedStation = parseStationCode(stationCode);
+                stationCodes.push({
+                    raw: stationCode,
+                    parsed: parsedStation,
+                    context: getContext(htmlContent, stationMatch.index, 100)
+                });
+            }
+            
+            // Find all XML file links
+            patterns.forEach((pattern, index) => {
+                let match;
+                while ((match = pattern.exec(htmlContent)) !== null) {
+                    if (index < 3 && match[1]) { // Only process file patterns
+                        let xmlUrl = match[1];
+                        
+                        // Convert relative URLs to absolute
+                        if (xmlUrl.startsWith('/')) {
+                            xmlUrl = baseUrlObj.origin + xmlUrl;
+                        } else if (!xmlUrl.startsWith('http')) {
+                            xmlUrl = new URL(xmlUrl, baseUrl).href;
+                        }
+                        
+                        // Check if it's a valid XML file URL
+                        if (xmlUrl.endsWith('.xml') || xmlUrl.includes('.xml')) {
+                            xmlFiles.push({
+                                url: xmlUrl,
+                                type: 'XML File Link',
+                                context: getContext(htmlContent, match.index, 100)
+                            });
+                        }
+                    } else if (index >= 3) { // XML content references
+                        xmlFiles.push({
+                            url: 'Found in page content',
+                            type: index === 3 ? 'XML Content-Type Reference' : 
+                                  index === 4 ? 'XML Namespace Declaration' :
+                                  index === 5 ? 'XML Processing Instruction' : 'XML Tag',
+                            context: getContext(htmlContent, match.index, 100)
+                        });
+                    }
+                }
+            });
+            
+            // Remove duplicates
+            const uniqueFiles = [];
+            const seen = new Set();
+            
+            xmlFiles.forEach(file => {
+                // Only include _fr.xml files
+                if (!file.url.endsWith('_fr.xml')) return;
+                const key = file.url + file.type;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    uniqueFiles.push(file);
+                }
+            });
+            
+            // Remove duplicate timestamps
+            const uniqueTimestamps = [];
+            const seenTimestamps = new Set();
+            
+            timestamps.forEach(timestamp => {
+                if (!seenTimestamps.has(timestamp.raw)) {
+                    seenTimestamps.add(timestamp.raw);
+                    uniqueTimestamps.push(timestamp);
+                }
+            });
+            
+            // Remove duplicate station codes
+            const uniqueStationCodes = [];
+            const seenStationCodes = new Set();
+            
+            stationCodes.forEach(station => {
+                if (!seenStationCodes.has(station.raw)) {
+                    seenStationCodes.add(station.raw);
+                    uniqueStationCodes.push(station);
+                }
+            });
+            
+            return {
+                xmlFiles: uniqueFiles,
+                timestamps: uniqueTimestamps,
+                stationCodes: uniqueStationCodes
+            };
+        }
+        
+        function getContext(htmlContent, index, length) {
+            const start = Math.max(0, index - length);
+            const end = Math.min(htmlContent.length, index + length);
+            return htmlContent.substring(start, end).replace(/\s+/g, ' ').trim();
+        }
+        
+        function parseTimestamp(timestamp) {
+            // Parse timestamp in format YYYYMMDDTHHMMSS.MSS
+            // Example: 20250704T170106.502
+            
+            if (!/^\d{8}T\d{6}\.\d{3}$/.test(timestamp)) {
+                return {
+                    formatted: 'Invalid format',
+                    date: 'Invalid',
+                    time: 'Invalid',
+                    milliseconds: 'Invalid'
+                };
+            }
+            
+            const year = timestamp.substring(0, 4);
+            const month = timestamp.substring(4, 6);
+            const day = timestamp.substring(6, 8);
+            const hour = timestamp.substring(9, 11);
+            const minute = timestamp.substring(11, 13);
+            const second = timestamp.substring(13, 15);
+            const milliseconds = timestamp.substring(16, 19);
+            
+            // Format date as YYYY-MM-DD
+            const date = `${year}-${month}-${day}`;
+            
+            // Format time as HH:MM:SS
+            const time = `${hour}:${minute}:${second}`;
+            
+            // Create a formatted display string
+            const formatted = `${date} ${time}.${milliseconds}`;
+            
+            return {
+                formatted: formatted,
+                date: date,
+                time: time,
+                milliseconds: milliseconds,
+                year: year,
+                month: month,
+                day: day,
+                hour: hour,
+                minute: minute,
+                second: second
+            };
+        }
+        
+        function parseStationCode(stationCode) {
+            // Parse station code in format s0000XXX
+            // Example: s0000123
+            
+            if (!/^s\d{7}$/i.test(stationCode)) {
+                return {
+                    formatted: 'Invalid format',
+                    stationNumber: 'Invalid',
+                    prefix: 'Invalid'
+                };
+            }
+            
+            const prefix = stationCode.substring(0, 1).toLowerCase();
+            const stationNumber = stationCode.substring(1);
+            
+            // Format as s-XXXXXXX
+            const formatted = `${prefix}-${stationNumber}`;
+            
+            return {
+                formatted: formatted,
+                stationNumber: stationNumber,
+                prefix: prefix,
+                fullCode: stationCode.toUpperCase()
+            };
+        }
+        
+        function displayResults(results, originalUrl) {
+            const resultsDiv = document.getElementById('results');
+            const { xmlFiles, timestamps, stationCodes } = results;
+            
+            // Display consolidated results
+            if (xmlFiles.length === 0 && timestamps.length === 0 && stationCodes.length === 0) {
+                resultsDiv.innerHTML = `
+                    <div class="success">
+                        <h3>No XML files, timestamps, or station codes found</h3>
+                        <p>The webpage at <strong>${originalUrl}</strong> doesn't appear to contain any XML file references, timestamp patterns, or station codes.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Combine all information into consolidated cards
+            const consolidatedResults = consolidateResults(xmlFiles, timestamps, stationCodes);
+            
+            let resultsHTML = `
+                <div class="stats">
+                    <h3>Scan Results</h3>
+                    <p>Found <strong>${xmlFiles.length}</strong> XML files, <strong>${timestamps.length}</strong> timestamps, and <strong>${stationCodes.length}</strong> station codes on <strong>${originalUrl}</strong></p>
+                    <p>Showing <strong>${consolidatedResults.length}</strong> consolidated results</p>
+                </div>
+            `;
+            
+            consolidatedResults.forEach((result, index) => {
+                resultsHTML += `
+                    <div class="result-item">
+                        <h3>${index + 1}. ${result.title}</h3>
+                        ${result.xmlFile ? `<p><strong>Latest XML File:</strong> <a href="${result.xmlFile.url}" target="_blank">${result.xmlFile.url}</a></p>` : ''}
+                        ${result.stationCode ? `<p><strong>Station Code:</strong> ${result.stationCode.parsed.formatted} (${result.stationCode.parsed.stationNumber})</p>` : ''}
+                        ${result.timestamp ? `<p><strong>Timestamp:</strong> ${result.timestamp.parsed.formatted}</p>` : ''}
+                        ${result.context ? `<p><strong>Context:</strong> ${result.context}</p>` : ''}
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = resultsHTML;
+        }
+        
+        function consolidateResults(xmlFiles, timestamps, stationCodes) {
+            const consolidated = [];
+            
+            // Group by station code if available
+            const stationGroups = new Map();
+            
+            // First, group XML files by station code
+            xmlFiles.forEach(file => {
+                // Extract station code from XML file URL or context
+                const stationMatch = file.url.match(/(s\d{7})/i) || file.context.match(/(s\d{7})/i);
+                const stationCode = stationMatch ? stationMatch[1] : 'unknown';
+                
+                if (!stationGroups.has(stationCode)) {
+                    stationGroups.set(stationCode, {
+                        stationCode: null,
+                        xmlFiles: [],
+                        timestamps: [],
+                        context: ''
+                    });
+                }
+                
+                stationGroups.get(stationCode).xmlFiles.push(file);
+            });
+            
+            // Add station codes to groups
+            stationCodes.forEach(station => {
+                const stationCode = station.raw;
+                if (!stationGroups.has(stationCode)) {
+                    stationGroups.set(stationCode, {
+                        stationCode: null,
+                        xmlFiles: [],
+                        timestamps: [],
+                        context: ''
+                    });
+                }
+                stationGroups.get(stationCode).stationCode = station;
+            });
+            
+            // Add timestamps to groups
+            timestamps.forEach(timestamp => {
+                // Try to match timestamp with station code from context
+                const stationMatch = timestamp.context.match(/(s\d{7})/i);
+                const stationCode = stationMatch ? stationMatch[1] : 'unknown';
+                
+                if (!stationGroups.has(stationCode)) {
+                    stationGroups.set(stationCode, {
+                        stationCode: null,
+                        xmlFiles: [],
+                        timestamps: [],
+                        context: ''
+                    });
+                }
+                
+                stationGroups.get(stationCode).timestamps.push(timestamp);
+            });
+            
+            // Create consolidated results for each station
+            stationGroups.forEach((group, stationCode) => {
+                if (group.xmlFiles.length > 0 || group.stationCode || group.timestamps.length > 0) {
+                    // Get the latest XML file (by URL or timestamp in context)
+                    const latestXmlFile = group.xmlFiles.length > 0 ? 
+                        group.xmlFiles.sort((a, b) => {
+                            // Try to extract timestamp from URLs for sorting
+                            const aMatch = a.url.match(/(\d{8}T\d{6})/);
+                            const bMatch = b.url.match(/(\d{8}T\d{6})/);
+                            if (aMatch && bMatch) {
+                                return bMatch[1].localeCompare(aMatch[1]); // Latest first
+                            }
+                            return b.url.localeCompare(a.url); // Fallback to URL comparison
+                        })[0] : null;
+                    
+                    // Get the latest timestamp
+                    const latestTimestamp = group.timestamps.length > 0 ? 
+                        group.timestamps.sort((a, b) => b.raw.localeCompare(a.raw))[0] : null;
+                    
+                    const title = group.stationCode ? 
+                        `Station ${group.stationCode.parsed.formatted}` : 
+                        `Station ${stationCode}`;
+                    
+                    consolidated.push({
+                        title: title,
+                        xmlFile: latestXmlFile,
+                        stationCode: group.stationCode,
+                        timestamp: latestTimestamp,
+                        context: latestXmlFile ? latestXmlFile.context : 
+                                latestTimestamp ? latestTimestamp.context : 
+                                group.stationCode ? group.stationCode.context : ''
+                    });
+                }
+            });
+            
+            // Sort consolidated results by station code
+            consolidated.sort((a, b) => {
+                const aCode = a.stationCode ? a.stationCode.parsed.stationNumber : '0000000';
+                const bCode = b.stationCode ? b.stationCode.parsed.stationNumber : '0000000';
+                return aCode.localeCompare(bCode);
+            });
+            
+            return consolidated;
+        }
+        
+        function showError(message) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `<div class="error">${message}</div>`;
+        }
+        
+        function isValidUrl(string) {
+            try {
+                new URL(string);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+        
+        async function scanCurrentHour() {
+            const urlInput = document.getElementById('urlInput');
+            const scanCurrentBtn = document.getElementById('scanCurrentBtn');
+            const resultsDiv = document.getElementById('results');
+            
+            const baseUrl = urlInput.value.trim();
+            
+            if (!baseUrl) {
+                showError('Please enter a valid URL');
+                return;
+            }
+            
+            if (!isValidUrl(baseUrl)) {
+                showError('Please enter a valid URL starting with http:// or https://');
+                return;
+            }
+            
+            // Get current hour
+            const now = new Date();
+            const currentHour = now.getUTCHours().toString().padStart(2, '0');
+            const currentTime = now.toUTCString();
+            
+            // Disable button and show loading
+            scanCurrentBtn.disabled = true;
+            scanCurrentBtn.textContent = 'Scanning Current Hour...';
+            resultsDiv.innerHTML = `<div class="loading">Scanning current hour (${currentHour}) at ${currentTime}...</div>`;
+            
+            try {
+                const hourUrl = baseUrl.endsWith('/') ? baseUrl + currentHour + '/' : baseUrl + '/' + currentHour + '/';
+                
+                // Use a CORS proxy to bypass CORS restrictions
+                const proxyUrl = 'https://api.allorigins.win/raw?url=';
+                const response = await fetch(proxyUrl + encodeURIComponent(hourUrl));
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const htmlContent = await response.text();
+                const results = findXMLFiles(htmlContent, hourUrl);
+                
+                // Add current hour information to results
+                results.xmlFiles.forEach(file => {
+                    file.hour = currentHour;
+                    file.sourceUrl = hourUrl;
+                    file.isCurrentHour = true;
+                });
+                
+                results.timestamps.forEach(timestamp => {
+                    timestamp.hour = currentHour;
+                    timestamp.sourceUrl = hourUrl;
+                    timestamp.isCurrentHour = true;
+                });
+                
+                results.stationCodes.forEach(station => {
+                    station.hour = currentHour;
+                    station.sourceUrl = hourUrl;
+                    station.isCurrentHour = true;
+                });
+                
+                displayCurrentHourResults(results, baseUrl, currentHour, currentTime);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showError(`Failed to scan the current hour: ${error.message}. This might be due to CORS restrictions or the website not being accessible.`);
+            } finally {
+                // Re-enable button
+                scanCurrentBtn.disabled = false;
+                scanCurrentBtn.textContent = '🕐 Scan Current Hour';
+            }
+        }
+        
+        function displayCurrentHourResults(results, baseUrl, currentHour, currentTime) {
+            const resultsDiv = document.getElementById('results');
+            const { xmlFiles, timestamps, stationCodes } = results;
+            
+            // Display consolidated results
+            if (xmlFiles.length === 0 && timestamps.length === 0 && stationCodes.length === 0) {
+                resultsDiv.innerHTML = `
+                    <div class="success">
+                        <h3>No XML files, timestamps, or station codes found in current hour</h3>
+                        <p>No XML files, timestamp patterns, or station codes were found in hour ${currentHour}.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Combine all information into consolidated cards
+            const consolidatedResults = consolidateResults(xmlFiles, timestamps, stationCodes);
+            
+            let resultsHTML = `
+                <div class="stats">
+                    <h3>🕐 Current Hour Scan Complete</h3>
+                    <p>Scanned hour <strong>${currentHour}</strong> at <strong>${currentTime}</strong></p>
+                    <p>URL: <a href="${baseUrl}${currentHour}/" target="_blank">${baseUrl}${currentHour}/</a></p>
+                    <p>Found <strong>${xmlFiles.length}</strong> XML files, <strong>${timestamps.length}</strong> timestamps, and <strong>${stationCodes.length}</strong> station codes</p>
+                    <p>Showing <strong>${consolidatedResults.length}</strong> consolidated results</p>
+                </div>
+            `;
+            
+            consolidatedResults.forEach((result, index) => {
+                resultsHTML += `
+                    <div class="result-item">
+                        <h3>${index + 1}. ${result.title} (Hour: ${currentHour})</h3>
+                        ${result.xmlFile ? `<p><strong>Latest XML File:</strong> <a href="${result.xmlFile.url}" target="_blank">${result.xmlFile.url}</a></p>` : ''}
+                        ${result.stationCode ? `<p><strong>Station Code:</strong> ${result.stationCode.parsed.formatted} (${result.stationCode.parsed.stationNumber})</p>` : ''}
+                        ${result.timestamp ? `<p><strong>Timestamp:</strong> ${result.timestamp.parsed.formatted}</p>` : ''}
+                        ${result.context ? `<p><strong>Context:</strong> ${result.context}</p>` : ''}
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = resultsHTML;
+        }
+        
+        async function scanAllHours() {
+            const urlInput = document.getElementById('urlInput');
+            const scanAllBtn = document.getElementById('scanAllBtn');
+            const resultsDiv = document.getElementById('results');
+            
+            const baseUrl = urlInput.value.trim();
+            
+            if (!baseUrl) {
+                showError('Please enter a valid URL');
+                return;
+            }
+            
+            if (!isValidUrl(baseUrl)) {
+                showError('Please enter a valid URL starting with http:// or https://');
+                return;
+            }
+            
+            // Disable button and show loading
+            scanAllBtn.disabled = true;
+            scanAllBtn.textContent = 'Scanning All Hours...';
+            resultsDiv.innerHTML = '<div class="loading">Scanning all hourly directories...</div>';
+            
+            const allResults = {
+                xmlFiles: [],
+                timestamps: [],
+                stationCodes: []
+            };
+            
+            const hours = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', 
+                          '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23'];
+            
+            let completedHours = 0;
+            
+            for (const hour of hours) {
+                try {
+                    const hourUrl = baseUrl.endsWith('/') ? baseUrl + hour + '/' : baseUrl + '/' + hour + '/';
+                    
+                    // Update loading message
+                    resultsDiv.innerHTML = `<div class="loading">Scanning hour ${hour}... (${completedHours + 1}/24)</div>`;
+                    
+                    // Use a CORS proxy to bypass CORS restrictions
+                    const proxyUrl = 'https://api.allorigins.win/raw?url=';
+                    const response = await fetch(proxyUrl + encodeURIComponent(hourUrl));
+                    
+                    if (response.ok) {
+                        const htmlContent = await response.text();
+                        const results = findXMLFiles(htmlContent, hourUrl);
+                        
+                        // Add hour information to results
+                        results.xmlFiles.forEach(file => {
+                            file.hour = hour;
+                            file.sourceUrl = hourUrl;
+                        });
+                        
+                        results.timestamps.forEach(timestamp => {
+                            timestamp.hour = hour;
+                            timestamp.sourceUrl = hourUrl;
+                        });
+                        
+                        results.stationCodes.forEach(station => {
+                            station.hour = hour;
+                            station.sourceUrl = hourUrl;
+                        });
+                        
+                        allResults.xmlFiles.push(...results.xmlFiles);
+                        allResults.timestamps.push(...results.timestamps);
+                        allResults.stationCodes.push(...results.stationCodes);
+                    }
+                    
+                    completedHours++;
+                    
+                    // Small delay to avoid overwhelming the server
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                } catch (error) {
+                    console.error(`Error scanning hour ${hour}:`, error);
+                    completedHours++;
+                }
+            }
+            
+            // Remove duplicates
+            const uniqueXmlFiles = [];
+            const uniqueTimestamps = [];
+            const uniqueStationCodes = [];
+            const seenXml = new Set();
+            const seenTimestamps = new Set();
+            const seenStationCodes = new Set();
+            
+            allResults.xmlFiles.forEach(file => {
+                const key = file.url + file.type + file.hour;
+                if (!seenXml.has(key)) {
+                    seenXml.add(key);
+                    uniqueXmlFiles.push(file);
+                }
+            });
+            
+            allResults.timestamps.forEach(timestamp => {
+                const key = timestamp.raw + timestamp.hour;
+                if (!seenTimestamps.has(key)) {
+                    seenTimestamps.add(key);
+                    uniqueTimestamps.push(timestamp);
+                }
+            });
+            
+            allResults.stationCodes.forEach(station => {
+                const key = station.raw + station.hour;
+                if (!seenStationCodes.has(key)) {
+                    seenStationCodes.add(key);
+                    uniqueStationCodes.push(station);
+                }
+            });
+            
+            displayAllHoursResults({
+                xmlFiles: uniqueXmlFiles,
+                timestamps: uniqueTimestamps,
+                stationCodes: uniqueStationCodes
+            }, baseUrl);
+            
+            // Re-enable button
+            scanAllBtn.disabled = false;
+            scanAllBtn.textContent = 'Scan All Hours';
+        }
+        
+        function displayAllHoursResults(results, baseUrl) {
+            const resultsDiv = document.getElementById('results');
+            const { xmlFiles, timestamps, stationCodes } = results;
+            
+            // Display consolidated results
+            if (xmlFiles.length === 0 && timestamps.length === 0 && stationCodes.length === 0) {
+                resultsDiv.innerHTML = `
+                    <div class="success">
+                        <h3>No XML files, timestamps, or station codes found</h3>
+                        <p>No XML files, timestamp patterns, or station codes were found across all 24 hourly directories.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Combine all information into consolidated cards
+            const consolidatedResults = consolidateResults(xmlFiles, timestamps, stationCodes);
+            
+            let resultsHTML = `
+                <div class="stats">
+                    <h3>All Hours Scan Complete</h3>
+                    <p>Scanned <strong>24 hourly directories</strong> on <strong>${baseUrl}</strong></p>
+                    <p>Found <strong>${xmlFiles.length}</strong> XML files, <strong>${timestamps.length}</strong> timestamps, and <strong>${stationCodes.length}</strong> station codes across all hours</p>
+                    <p>Showing <strong>${consolidatedResults.length}</strong> consolidated results (latest XML file per station)</p>
+                </div>
+            `;
+            
+            consolidatedResults.forEach((result, index) => {
+                resultsHTML += `
+                    <div class="result-item">
+                        <h3>${index + 1}. ${result.title}</h3>
+                        ${result.xmlFile ? `<p><strong>Latest XML File:</strong> <a href="${result.xmlFile.url}" target="_blank">${result.xmlFile.url}</a></p>` : ''}
+                        ${result.xmlFile && result.xmlFile.hour ? `<p><strong>Hour:</strong> ${result.xmlFile.hour}</p>` : ''}
+                        ${result.stationCode ? `<p><strong>Station Code:</strong> ${result.stationCode.parsed.formatted} (${result.stationCode.parsed.stationNumber})</p>` : ''}
+                        ${result.timestamp ? `<p><strong>Timestamp:</strong> ${result.timestamp.parsed.formatted}</p>` : ''}
+                        ${result.context ? `<p><strong>Context:</strong> ${result.context}</p>` : ''}
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = resultsHTML;
+        }
+        
+        let autoRefreshInterval = null;
+        
+        function startAutoRefresh() {
+            const autoRefreshBtn = document.getElementById('autoRefreshBtn');
+            
+            if (autoRefreshInterval) {
+                // Stop auto-refresh
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                autoRefreshBtn.textContent = '🔄 Auto-Refresh Current Hour';
+                autoRefreshBtn.style.backgroundColor = '#17a2b8';
+                return;
+            }
+            
+            // Start auto-refresh
+            autoRefreshBtn.textContent = '⏹️ Stop Auto-Refresh';
+            autoRefreshBtn.style.backgroundColor = '#dc3545';
+            
+            // Initial scan
+            scanCurrentHour();
+            
+            // Set up interval to scan every 5 minutes
+            autoRefreshInterval = setInterval(() => {
+                const now = new Date();
+                const currentHour = now.getUTCHours().toString().padStart(2, '0');
+                const currentTime = now.toUTCString();
+                
+                // Update the results area to show we're checking
+                const resultsDiv = document.getElementById('results');
+                const existingContent = resultsDiv.innerHTML;
+                
+                resultsDiv.innerHTML = `
+                    <div class="loading">
+                        🔄 Auto-refreshing... Checking current hour (${currentHour}) at ${currentTime}
+                    </div>
+                    <hr>
+                    <h4>Previous Results:</h4>
+                    ${existingContent}
+                `;
+                
+                // Perform the scan
+                scanCurrentHour();
+            }, 5 * 60 * 1000); // 5 minutes
+        }
+        
+        // Check for station number in URL and redirect if found
+        function checkForStationRedirect() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const stationNumber = urlParams.get('station');
+            
+            if (stationNumber) {
+                // Validate station number format (s0000XXX)
+                if (/^s\d{7}$/i.test(stationNumber)) {
+                    redirectToLatestStationFile(stationNumber);
+                } else {
+                    showError(`Invalid station number format: ${stationNumber}. Expected format: s0000XXX`);
+                }
+            }
+        }
+        
+        async function redirectToLatestStationFile(stationNumber) {
+            const resultsDiv = document.getElementById('results');
+            
+            // Get current hour
+            const now = new Date();
+            const currentHour = now.getUTCHours().toString().padStart(2, '0');
+            const currentTime = now.toUTCString();
+            
+            resultsDiv.innerHTML = `<div class="loading">Finding XML file for station ${stationNumber} in current hour (${currentHour})...</div>`;
+            
+            try {
+                const baseUrl = 'https://dd.meteo.gc.ca/today/citypage_weather/QC/';
+                const hourUrl = baseUrl + currentHour + '/';
+                
+                // Scan only the current hour
+                const proxyUrl = 'https://api.allorigins.win/raw?url=';
+                const response = await fetch(proxyUrl + encodeURIComponent(hourUrl));
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const htmlContent = await response.text();
+                const results = findXMLFiles(htmlContent, hourUrl);
+                
+                // Filter for the specific station and _fr.xml files only
+                const stationFiles = results.xmlFiles.filter(file => 
+                    (file.url.toLowerCase().includes(stationNumber.toLowerCase()) ||
+                     file.context.toLowerCase().includes(stationNumber.toLowerCase())) &&
+                    file.url.endsWith('_fr.xml')
+                );
+                
+                stationFiles.forEach(file => {
+                    file.hour = currentHour;
+                    file.sourceUrl = hourUrl;
+                });
+                
+                if (stationFiles.length > 0) {
+                    // Get the latest file for this station in current hour
+                    const latestFile = stationFiles.sort((a, b) => {
+                        // Try to extract timestamp from URLs for sorting
+                        const aMatch = a.url.match(/(\d{8}T\d{6})/);
+                        const bMatch = b.url.match(/(\d{8}T\d{6})/);
+                        if (aMatch && bMatch) {
+                            return bMatch[1].localeCompare(aMatch[1]); // Latest first
+                        }
+                        return b.url.localeCompare(a.url); // Fallback to URL comparison
+                    })[0];
+                    
+                    // Redirect to the latest XML file in the same page
+                    window.location.href = latestFile.url;
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="success">
+                            <h3>✅ Redirected to Current Hour XML File</h3>
+                            <p>Found <strong>${stationFiles.length}</strong> XML files for station <strong>${stationNumber}</strong> in current hour (${currentHour})</p>
+                            <p><strong>Latest file:</strong> <a href="${latestFile.url}" target="_blank">${latestFile.url}</a></p>
+                            <p><strong>Current Hour:</strong> ${currentHour} (${currentTime})</p>
+                            <p><strong>Source:</strong> <a href="${latestFile.sourceUrl}" target="_blank">${latestFile.sourceUrl}</a></p>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="error">
+                            <h3>❌ No XML files found in current hour</h3>
+                            <p>No XML files were found for station <strong>${stationNumber}</strong> in the current hour (${currentHour}).</p>
+                            <p>This could mean:</p>
+                            <ul>
+                                <li>The station hasn't reported data yet this hour</li>
+                                <li>The station number is incorrect</li>
+                                <li>Data is not yet available for the current hour</li>
+                            </ul>
+                            <p>Try scanning all hours manually to find the latest data.</p>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showError(`Failed to find latest XML file for station ${stationNumber}: ${error.message}`);
+            }
+        }
+        
+        // Add station number input field
+        function addStationRedirectUI() {
+            const container = document.querySelector('.container');
+            const existingStationDiv = document.getElementById('stationRedirectDiv');
+            
+            if (!existingStationDiv) {
+                const stationDiv = document.createElement('div');
+                stationDiv.id = 'stationRedirectDiv';
+                stationDiv.className = 'input-group';
+                stationDiv.innerHTML = `
+                    <label for="stationSearch">Search Quebec Stations by Name:</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="stationSearch" placeholder="Search for Montreal, Quebec, Laval..." style="flex: 1;">
+                        <button onclick="searchStations()" style="background-color: #6f42c1; padding: 12px 16px;">🔍 Search</button>
+                        <button onclick="showAllStations()" style="background-color: #28a745; padding: 12px 16px;">📋 Show All</button>
+                        <button onclick="reloadStationList()" style="background-color: #fd7e14; padding: 12px 16px;">🔄 Reload</button>
+                        <button onclick="testXMLUrl()" style="background-color: #17a2b8; padding: 12px 16px;">🧪 Test XML</button>
+                    </div>
+                    <div id="stationSearchResults" style="margin-top: 10px; max-height: 400px; overflow-y: auto; display: none; border: 1px solid #ddd; border-radius: 5px;"></div>
+                    <div id="stationDebugInfo" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px; font-size: 12px; display: none;"></div>
+                    
+                    <div style="margin-top: 20px;">
+                        <button onclick="showStationMap()" style="background-color: #28a745; padding: 10px 16px; margin-right: 10px;">🗺️ Show Map</button>
+                        <button onclick="hideStationMap()" style="background-color: #6c757d; padding: 10px 16px;">❌ Hide Map</button>
+                    </div>
+                    <div id="stationMap" style="margin-top: 10px; height: 400px; border: 1px solid #ddd; display: none;"></div>
+                    
+                    <label for="stationInput" style="margin-top: 20px;">Quick Station Redirect:</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="stationInput" placeholder="s0000123" style="flex: 1;">
+                        <button onclick="redirectToStation()" style="background-color: #6f42c1; padding: 12px 16px;">🚀 Go to Latest</button>
+                    </div>
+                    <small style="color: #666; margin-top: 5px; display: block;">
+                        Enter station code (e.g., s0000123) to automatically find and open the latest XML file from the current hour
+                    </small>
+                `;
+                
+                // Insert after the hour selection
+                const hourSelect = document.getElementById('hourSelect');
+                hourSelect.parentNode.parentNode.insertBefore(stationDiv, hourSelect.parentNode.nextSibling);
+            }
+        }
+        
+        let stationList = [];
+        
+        async function loadStationList() {
+            // Use only the embedded XML string
+            const xmlContent = `
+<siteList>
+<site code="s0000001">
+<nameEn>Athabasca</nameEn>
+<nameFr>Athabasca</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000002">
+<nameEn>Clearwater</nameEn>
+<nameFr>Clearwater</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000003">
+<nameEn>Valemount</nameEn>
+<nameFr>Valemount</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000004">
+<nameEn>Grand Forks</nameEn>
+<nameFr>Grand Forks</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000005">
+<nameEn>McBride</nameEn>
+<nameFr>McBride</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000006">
+<nameEn>Merritt</nameEn>
+<nameFr>Merritt</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000007">
+<nameEn>Masset</nameEn>
+<nameFr>Masset</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000008">
+<nameEn>Invermere</nameEn>
+<nameFr>Invermere</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000009">
+<nameEn>Dome Creek</nameEn>
+<nameFr>Dome Creek</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000010">
+<nameEn>Little Grand Rapids</nameEn>
+<nameFr>Little Grand Rapids</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000011">
+<nameEn>Oxford House</nameEn>
+<nameFr>Oxford House</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000012">
+<nameEn>Bissett</nameEn>
+<nameFr>Bissett</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000013">
+<nameEn>Shamattawa</nameEn>
+<nameFr>Shamattawa</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000014">
+<nameEn>York Factory</nameEn>
+<nameFr>York Factory</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000015">
+<nameEn>Flin Flon</nameEn>
+<nameFr>Flin Flon</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000016">
+<nameEn>Musgrave Harbour</nameEn>
+<nameFr>Musgrave Harbour</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000017">
+<nameEn>New-Wes-Valley</nameEn>
+<nameFr>New-Wes-Valley</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000018">
+<nameEn>Bay Roberts</nameEn>
+<nameFr>Bay Roberts</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000019">
+<nameEn>St. Alban's</nameEn>
+<nameFr>St. Alban's</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000020">
+<nameEn>Fourchu Head</nameEn>
+<nameFr>Cap Fourchu</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000021">
+<nameEn>North Mountain (Cape Breton)</nameEn>
+<nameFr>North Mountain (Cap-Breton)</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000022">
+<nameEn>Marathon</nameEn>
+<nameFr>Marathon</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000023">
+<nameEn>Terrace Bay</nameEn>
+<nameFr>Terrace Bay</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000024">
+<nameEn>Attawapiskat</nameEn>
+<nameFr>Attawapiskat</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000025">
+<nameEn>Gogama</nameEn>
+<nameFr>Gogama</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000026">
+<nameEn>Maple Plains</nameEn>
+<nameFr>Maple Plains</nameFr>
+<provinceCode>PE</provinceCode>
+</site>
+<site code="s0000027">
+<nameEn>Murdochville</nameEn>
+<nameFr>Murdochville</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000028">
+<nameEn>Escoumins</nameEn>
+<nameFr>Escoumins</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000029">
+<nameEn>Saint-Michel-des-Saints</nameEn>
+<nameFr>Saint-Michel-des-Saints</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000030">
+<nameEn>Rancheria</nameEn>
+<nameFr>Rancheria</nameFr>
+<provinceCode>YT</provinceCode>
+</site>
+<site code="s0000031">
+<nameEn>Dempster (Highway)</nameEn>
+<nameFr>Dempster (Route)</nameFr>
+<provinceCode>YT</provinceCode>
+</site>
+<site code="s0000032">
+<nameEn>Burgeo</nameEn>
+<nameFr>Burgeo</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000033">
+<nameEn>Bouctouche</nameEn>
+<nameFr>Bouctouche</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000034">
+<nameEn>Richibucto</nameEn>
+<nameFr>Richibucto</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000035">
+<nameEn>Rogersville</nameEn>
+<nameFr>Rogersville</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000036">
+<nameEn>Miramichi</nameEn>
+<nameFr>Miramichi</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000037">
+<nameEn>Point Escuminac</nameEn>
+<nameFr>Point Escuminac</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000038">
+<nameEn>Kouchibouguac</nameEn>
+<nameFr>Kouchibouguac</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000039">
+<nameEn>St. Lawrence</nameEn>
+<nameFr>St. Lawrence</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000040">
+<nameEn>Parrsboro</nameEn>
+<nameFr>Parrsboro</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000041">
+<nameEn>Bonavista</nameEn>
+<nameFr>Bonavista</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000042">
+<nameEn>Wreckhouse</nameEn>
+<nameFr>Wreckhouse</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000043">
+<nameEn>Edmundston</nameEn>
+<nameFr>Edmundston</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000044">
+<nameEn>Beauharnois</nameEn>
+<nameFr>Beauharnois</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000045">
+<nameEn>Edmonton</nameEn>
+<nameFr>Edmonton</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000046">
+<nameEn>Candiac</nameEn>
+<nameFr>Candiac</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000047">
+<nameEn>Calgary</nameEn>
+<nameFr>Calgary</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000048">
+<nameEn>La Prairie</nameEn>
+<nameFr>La Prairie</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000049">
+<nameEn>Saint-Constant</nameEn>
+<nameFr>Saint-Constant</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000050">
+<nameEn>Sainte-Catherine</nameEn>
+<nameFr>Sainte-Catherine</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000051">
+<nameEn>Saint-Rémi</nameEn>
+<nameFr>Saint-Rémi</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000052">
+<nameEn>Granby</nameEn>
+<nameFr>Granby</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000053">
+<nameEn>Cowansville</nameEn>
+<nameFr>Cowansville</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000054">
+<nameEn>Victoriaville</nameEn>
+<nameFr>Victoriaville</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000055">
+<nameEn>Prévost</nameEn>
+<nameFr>Prévost</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000056">
+<nameEn>Sainte-Sophie</nameEn>
+<nameFr>Sainte-Sophie</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000057">
+<nameEn>Saint-Lin-Laurentides</nameEn>
+<nameFr>Saint-Lin-Laurentides</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000058">
+<nameEn>Saint-Sauveur</nameEn>
+<nameFr>Saint-Sauveur</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000059">
+<nameEn>Saint-Hyacinthe</nameEn>
+<nameFr>Saint-Hyacinthe</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000060">
+<nameEn>Marieville</nameEn>
+<nameFr>Marieville</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000061">
+<nameEn>Rigaud</nameEn>
+<nameFr>Rigaud</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000062">
+<nameEn>Saint-Lazare</nameEn>
+<nameFr>Saint-Lazare</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000063">
+<nameEn>Farnham</nameEn>
+<nameFr>Farnham</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000064">
+<nameEn>Thetford Mines</nameEn>
+<nameFr>Thetford Mines</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000065">
+<nameEn>Kugaaruk</nameEn>
+<nameFr>Kugaaruk</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000066">
+<nameEn>Highvale</nameEn>
+<nameFr>Highvale</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000067">
+<nameEn>Pelican Narrows</nameEn>
+<nameFr>Pelican Narrows</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000068">
+<nameEn>Strathmore</nameEn>
+<nameFr>Strathmore</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000069">
+<nameEn>Hawkesbury</nameEn>
+<nameFr>Hawkesbury</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000070">
+<nameEn>Alexandria</nameEn>
+<nameFr>Alexandria</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000071">
+<nameEn>Cornwall</nameEn>
+<nameFr>Cornwall</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000072">
+<nameEn>Morrisburg</nameEn>
+<nameFr>Morrisburg</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000073">
+<nameEn>Algonquin Park (Brent)</nameEn>
+<nameFr>Parc Algonquin (Brent)</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000074">
+<nameEn>Algonquin Park (Lake of Two Rivers)</nameEn>
+<nameFr>Parc Algonquin (Lake of Two Rivers)</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000075">
+<nameEn>Oxtongue Lake</nameEn>
+<nameFr>Oxtongue Lake</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000076">
+<nameEn>Welland</nameEn>
+<nameFr>Welland</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000077">
+<nameEn>Winchester</nameEn>
+<nameFr>Winchester</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000078">
+<nameEn>Whistler</nameEn>
+<nameFr>Whistler</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000079">
+<nameEn>La Scie</nameEn>
+<nameFr>La Scie</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000080">
+<nameEn>Rondeau (Provincial Park)</nameEn>
+<nameFr>Rondeau (Parc provincial)</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000081">
+<nameEn>Coronach</nameEn>
+<nameFr>Coronach</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000082">
+<nameEn>Placentia</nameEn>
+<nameFr>Placentia</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000083">
+<nameEn>Sundre</nameEn>
+<nameFr>Sundre</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000084">
+<nameEn>Halifax (Shearwater)</nameEn>
+<nameFr>Halifax (Shearwater)</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000085">
+<nameEn>Témiscamingue</nameEn>
+<nameFr>Témiscamingue</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000086">
+<nameEn>Indian Head</nameEn>
+<nameFr>Indian Head</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000087">
+<nameEn>Fort Qu'Appelle</nameEn>
+<nameFr>Fort Qu'Appelle</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000088">
+<nameEn>Killarney</nameEn>
+<nameFr>Killarney</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000089">
+<nameEn>New Glasgow</nameEn>
+<nameFr>New Glasgow</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000090">
+<nameEn>Caribou</nameEn>
+<nameFr>Caribou</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000091">
+<nameEn>Bachelors Island</nameEn>
+<nameFr>Bachelors Island</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000092">
+<nameEn>Beaverlodge</nameEn>
+<nameFr>Beaverlodge</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000093">
+<nameEn>Brooks</nameEn>
+<nameFr>Brooks</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000094">
+<nameEn>Mingan</nameEn>
+<nameFr>Mingan</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000095">
+<nameEn>Nipawin</nameEn>
+<nameFr>Nipawin</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000096">
+<nameEn>Beaver Island</nameEn>
+<nameFr>Beaver Island</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000097">
+<nameEn>Port-Menier</nameEn>
+<nameFr>Port-Menier</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000098">
+<nameEn>Salaberry-de-Valleyfield</nameEn>
+<nameFr>Salaberry-de-Valleyfield</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000099">
+<nameEn>Huntingdon</nameEn>
+<nameFr>Huntingdon</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000100">
+<nameEn>Cartwright</nameEn>
+<nameFr>Cartwright</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000101">
+<nameEn>Bloodvein</nameEn>
+<nameFr>Bloodvein</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000102">
+<nameEn>Berens River</nameEn>
+<nameFr>Berens River</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000103">
+<nameEn>Atikokan</nameEn>
+<nameFr>Atikokan</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000104">
+<nameEn>Fort Frances</nameEn>
+<nameFr>Fort Frances</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000105">
+<nameEn>Mine Centre</nameEn>
+<nameFr>Mine Centre</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000106">
+<nameEn>100 Mile House</nameEn>
+<nameFr>100 Mile House</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000107">
+<nameEn>Clinton</nameEn>
+<nameFr>Clinton</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000108">
+<nameEn>Collingwood</nameEn>
+<nameFr>Collingwood</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000109">
+<nameEn>Shelburne</nameEn>
+<nameFr>Shelburne</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000110">
+<nameEn>Baccaro Point</nameEn>
+<nameFr>Cap Baccaro</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000111">
+<nameEn>Coronation</nameEn>
+<nameFr>Coronation</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000112">
+<nameEn>Englee</nameEn>
+<nameFr>Englee</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000113">
+<nameEn>Uranium City</nameEn>
+<nameFr>Uranium City</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000114">
+<nameEn>Port au Choix</nameEn>
+<nameFr>Port-au-Choix</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000115">
+<nameEn>Daniel's Harbour</nameEn>
+<nameFr>Daniel's Harbour</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000116">
+<nameEn>Badger</nameEn>
+<nameFr>Badger</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000117">
+<nameEn>Buchans</nameEn>
+<nameFr>Buchans</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000118">
+<nameEn>Grand Falls-Windsor</nameEn>
+<nameFr>Grand Falls-Windsor</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000119">
+<nameEn>Willow Creek (Provincial Park)</nameEn>
+<nameFr>Willow Creek (Parc provincial)</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000120">
+<nameEn>Claresholm</nameEn>
+<nameFr>Claresholm</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000121">
+<nameEn>Chevery</nameEn>
+<nameFr>Chevery</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000122">
+<nameEn>Twillingate</nameEn>
+<nameFr>Twillingate</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000123">
+<nameEn>Manicouagan</nameEn>
+<nameFr>Manicouagan</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000124">
+<nameEn>La Tuque</nameEn>
+<nameFr>La Tuque</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000125">
+<nameEn>Mauricie</nameEn>
+<nameFr>Mauricie</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000126">
+<nameEn>Calgary (Olympic Park)</nameEn>
+<nameFr>Calgary (Parc Olympique)</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000127">
+<nameEn>Upsala</nameEn>
+<nameFr>Upsala</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000128">
+<nameEn>St. Anthony</nameEn>
+<nameFr>St. Anthony</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000129">
+<nameEn>Drumheller</nameEn>
+<nameFr>Drumheller</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000130">
+<nameEn>Pinawa</nameEn>
+<nameFr>Pinawa</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000131">
+<nameEn>Whiteshell</nameEn>
+<nameFr>Whiteshell</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000132">
+<nameEn>Estevan Point</nameEn>
+<nameFr>Estevan Point</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000133">
+<nameEn>Shaunavon</nameEn>
+<nameFr>Shaunavon</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000134">
+<nameEn>Eastend</nameEn>
+<nameFr>Eastend</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000135">
+<nameEn>Virden</nameEn>
+<nameFr>Virden</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000136">
+<nameEn>Melita</nameEn>
+<nameFr>Melita</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000137">
+<nameEn>Turtle Mountain (Provincial Park)</nameEn>
+<nameFr>Turtle Mountain (Parc provincial)</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000138">
+<nameEn>East Point</nameEn>
+<nameFr>East Point</nameFr>
+<provinceCode>PE</provinceCode>
+</site>
+<site code="s0000139">
+<nameEn>Swan River</nameEn>
+<nameFr>Swan River</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000140">
+<nameEn>Eureka</nameEn>
+<nameFr>Eureka</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000141">
+<nameEn>Vancouver</nameEn>
+<nameFr>Vancouver</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000142">
+<nameEn>L'Assomption</nameEn>
+<nameFr>L'Assomption</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000143">
+<nameEn>Berthierville</nameEn>
+<nameFr>Berthierville</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000144">
+<nameEn>Contrecoeur</nameEn>
+<nameFr>Contrecoeur</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000145">
+<nameEn>Mascouche</nameEn>
+<nameFr>Mascouche</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000146">
+<nameEn>Prince George</nameEn>
+<nameFr>Prince George</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000147">
+<nameEn>Sorel-Tracy</nameEn>
+<nameFr>Sorel-Tracy</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000148">
+<nameEn>Tracy</nameEn>
+<nameFr>Tracy</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000149">
+<nameEn>Le Gardeur</nameEn>
+<nameFr>Le Gardeur</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000150">
+<nameEn>Morris</nameEn>
+<nameFr>Morris</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000151">
+<nameEn>Steinbach</nameEn>
+<nameFr>Steinbach</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000152">
+<nameEn>Dominion City</nameEn>
+<nameFr>Dominion City</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000153">
+<nameEn>Emerson</nameEn>
+<nameFr>Emerson</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000154">
+<nameEn>Vita</nameEn>
+<nameFr>Vita</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000155">
+<nameEn>Gulf Islands (Southern)</nameEn>
+<nameFr>Gulf Islands (Secteur sud)</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000156">
+<nameEn>Elk Island (National Park)</nameEn>
+<nameFr>Elk Island (Parc national)</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000157">
+<nameEn>Tisdale</nameEn>
+<nameFr>Tisdale</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000158">
+<nameEn>Melfort</nameEn>
+<nameFr>Melfort</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000159">
+<nameEn>Cardston</nameEn>
+<nameFr>Cardston</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000160">
+<nameEn>Snow Lake</nameEn>
+<nameFr>Snow Lake</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000161">
+<nameEn>Pukatawagan</nameEn>
+<nameFr>Pukatawagan</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000162">
+<nameEn>Nain</nameEn>
+<nameFr>Nain</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000163">
+<nameEn>Sutton</nameEn>
+<nameFr>Sutton</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000164">
+<nameEn>Colville Lake</nameEn>
+<nameFr>Colville Lake</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000165">
+<nameEn>Goderich</nameEn>
+<nameFr>Goderich</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000166">
+<nameEn>Kincardine</nameEn>
+<nameFr>Kincardine</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000167">
+<nameEn>Garden Creek</nameEn>
+<nameFr>Garden Creek</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000168">
+<nameEn>Brockville</nameEn>
+<nameFr>Brockville</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000169">
+<nameEn>Gananoque</nameEn>
+<nameFr>Gananoque</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000170">
+<nameEn>Waterton Park</nameEn>
+<nameFr>Parc Waterton</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000171">
+<nameEn>Altona</nameEn>
+<nameFr>Altona</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000172">
+<nameEn>Gretna</nameEn>
+<nameFr>Gretna</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000173">
+<nameEn>Pemberton</nameEn>
+<nameFr>Pemberton</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000174">
+<nameEn>Îles-de-la-Madeleine</nameEn>
+<nameFr>Îles-de-la-Madeleine</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000175">
+<nameEn>Sparwood</nameEn>
+<nameFr>Sparwood</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000176">
+<nameEn>Esther</nameEn>
+<nameFr>Esther</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000177">
+<nameEn>Grise Fiord</nameEn>
+<nameFr>Grise Fiord</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000178">
+<nameEn>Hunters Point</nameEn>
+<nameFr>Hunters Point</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000179">
+<nameEn>Three Hills</nameEn>
+<nameFr>Three Hills</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000180">
+<nameEn>Varennes</nameEn>
+<nameFr>Varennes</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000181">
+<nameEn>Hopedale</nameEn>
+<nameFr>Hopedale</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000182">
+<nameEn>Donnacona</nameEn>
+<nameFr>Donnacona</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000183">
+<nameEn>Haines Junction</nameEn>
+<nameFr>Haines Junction</nameFr>
+<provinceCode>YT</provinceCode>
+</site>
+<site code="s0000185">
+<nameEn>Beauceville</nameEn>
+<nameFr>Beauceville</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000186">
+<nameEn>Lac-Mégantic</nameEn>
+<nameFr>Lac-Mégantic</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000187">
+<nameEn>Saint-Georges</nameEn>
+<nameFr>Saint-Georges</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000188">
+<nameEn>Fort Providence</nameEn>
+<nameFr>Fort Providence</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000189">
+<nameEn>Pine Falls</nameEn>
+<nameFr>Pine Falls</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000190">
+<nameEn>Victoria Beach</nameEn>
+<nameFr>Victoria Beach</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000191">
+<nameEn>Grand Beach</nameEn>
+<nameFr>Grand Beach</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000192">
+<nameEn>Broadview</nameEn>
+<nameFr>Broadview</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000193">
+<nameEn>Winnipeg</nameEn>
+<nameFr>Winnipeg</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000194">
+<nameEn>Charlevoix</nameEn>
+<nameFr>Charlevoix</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000195">
+<nameEn>Watrous</nameEn>
+<nameFr>Watrous</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000196">
+<nameEn>Humboldt</nameEn>
+<nameFr>Humboldt</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000197">
+<nameEn>Alma</nameEn>
+<nameFr>Alma</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000198">
+<nameEn>Mount Carleton (Provincial Park)</nameEn>
+<nameFr>Mont Carleton (Parc provincial)</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000199">
+<nameEn>Saint-Quentin</nameEn>
+<nameFr>Saint-Quentin</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000200">
+<nameEn>St. Leonard</nameEn>
+<nameFr>St. Leonard</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000201">
+<nameEn>Grand Falls</nameEn>
+<nameFr>Grand-Sault</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000202">
+<nameEn>Saint-Jean-sur-Richelieu</nameEn>
+<nameFr>Saint-Jean-sur-Richelieu</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000203">
+<nameEn>Saint-Luc</nameEn>
+<nameFr>Saint-Luc</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000204">
+<nameEn>Vanier</nameEn>
+<nameFr>Vanier</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000205">
+<nameEn>Bernières</nameEn>
+<nameFr>Bernières</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000206">
+<nameEn>Ennadai</nameEn>
+<nameFr>Ennadai</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000207">
+<nameEn>Grand Rapids</nameEn>
+<nameFr>Grand Rapids</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000208">
+<nameEn>Southend Reindeer</nameEn>
+<nameFr>Southend Reindeer</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000209">
+<nameEn>Assiniboia</nameEn>
+<nameFr>Assiniboia</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000210">
+<nameEn>Fort Liard</nameEn>
+<nameFr>Fort Liard</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000211">
+<nameEn>Saguenay</nameEn>
+<nameFr>Saguenay</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000212">
+<nameEn>Creston</nameEn>
+<nameFr>Creston</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000213">
+<nameEn>Mont-Tremblant</nameEn>
+<nameFr>Mont-Tremblant</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000214">
+<nameEn>Sainte-Agathe</nameEn>
+<nameFr>Sainte-Agathe</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000216">
+<nameEn>Vernon</nameEn>
+<nameFr>Vernon</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000217">
+<nameEn>Hinton</nameEn>
+<nameFr>Hinton</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000218">
+<nameEn>Jasper</nameEn>
+<nameFr>Jasper</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000219">
+<nameEn>Leader</nameEn>
+<nameFr>Leader</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000220">
+<nameEn>Marble Mountain</nameEn>
+<nameFr>Marble Mountain</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000221">
+<nameEn>Corner Brook</nameEn>
+<nameFr>Corner Brook</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000222">
+<nameEn>Lillooet</nameEn>
+<nameFr>Lillooet</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000223">
+<nameEn>Kejimkujik (National Park)</nameEn>
+<nameFr>Kejimkujik (Parc national)</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000224">
+<nameEn>Malahat</nameEn>
+<nameFr>Malahat</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000225">
+<nameEn>Rockglen</nameEn>
+<nameFr>Rockglen</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000226">
+<nameEn>Hope Slide</nameEn>
+<nameFr>Hope Slide</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000227">
+<nameEn>Dease Lake</nameEn>
+<nameFr>Dease Lake</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000228">
+<nameEn>Cassiar</nameEn>
+<nameFr>Cassiar</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000229">
+<nameEn>Lac La Biche</nameEn>
+<nameFr>Lac La Biche</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000230">
+<nameEn>Lucky Lake</nameEn>
+<nameFr>Lucky Lake</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000231">
+<nameEn>Ogoki</nameEn>
+<nameFr>Ogoki</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000232">
+<nameEn>Webequie</nameEn>
+<nameFr>Webequie</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000233">
+<nameEn>Lansdowne House</nameEn>
+<nameFr>Lansdowne House</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000234">
+<nameEn>Gonzales Point</nameEn>
+<nameFr>Gonzales Point</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000235">
+<nameEn>Wingham</nameEn>
+<nameFr>Wingham</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000236">
+<nameEn>Walkerton</nameEn>
+<nameFr>Walkerton</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000237">
+<nameEn>Dundalk</nameEn>
+<nameFr>Dundalk</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000238">
+<nameEn>North Perth</nameEn>
+<nameFr>North Perth</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000239">
+<nameEn>Shelburne</nameEn>
+<nameFr>Shelburne</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000240">
+<nameEn>Mount Forest</nameEn>
+<nameFr>Mount Forest</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000241">
+<nameEn>Waskesiu Lake</nameEn>
+<nameFr>Waskesiu Lake</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000242">
+<nameEn>Lytton</nameEn>
+<nameFr>Lytton</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000243">
+<nameEn>Miscou Island</nameEn>
+<nameFr>Miscou Island</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000244">
+<nameEn>Maniwaki</nameEn>
+<nameFr>Maniwaki</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000245">
+<nameEn>La Vérendrye (Réserve faunique)</nameEn>
+<nameFr>La Vérendrye (Réserve faunique)</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000246">
+<nameEn>Mont-Laurier</nameEn>
+<nameFr>Mont-Laurier</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000247">
+<nameEn>Pitt Meadows</nameEn>
+<nameFr>Pitt Meadows</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000248">
+<nameEn>Maple Creek</nameEn>
+<nameFr>Maple Creek</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000249">
+<nameEn>Whati</nameEn>
+<nameFr>Whati</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000250">
+<nameEn>Fredericton</nameEn>
+<nameFr>Fredericton</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000251">
+<nameEn>Cobourg</nameEn>
+<nameFr>Cobourg</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000252">
+<nameEn>North Cape</nameEn>
+<nameFr>North Cape</nameFr>
+<provinceCode>PE</provinceCode>
+</site>
+<site code="s0000253">
+<nameEn>Rivière-du-Loup</nameEn>
+<nameFr>Rivière-du-Loup</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000254">
+<nameEn>Trois-Pistoles</nameEn>
+<nameFr>Trois-Pistoles</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000255">
+<nameEn>Temiscouata</nameEn>
+<nameFr>Témiscouata</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000256">
+<nameEn>Deerwood</nameEn>
+<nameFr>Deerwood</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000257">
+<nameEn>Carman</nameEn>
+<nameFr>Carman</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000258">
+<nameEn>Nelson</nameEn>
+<nameFr>Nelson</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000259">
+<nameEn>Nakusp</nameEn>
+<nameFr>Nakusp</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000260">
+<nameEn>Nicolet</nameEn>
+<nameFr>Nicolet</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000261">
+<nameEn>Drummondville</nameEn>
+<nameFr>Drummondville</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000262">
+<nameEn>Saint-Nicéphore</nameEn>
+<nameFr>Saint-Nicéphore</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000263">
+<nameEn>Kananaskis (Nakiska Ridgetop)</nameEn>
+<nameFr>Kananaskis (Nakiska Ridgetop)</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000264">
+<nameEn>North East Margaree</nameEn>
+<nameFr>North East Margaree</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000265">
+<nameEn>Baddeck</nameEn>
+<nameFr>Baddeck</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000266">
+<nameEn>Hearst</nameEn>
+<nameFr>Hearst</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000267">
+<nameEn>Hornepayne</nameEn>
+<nameFr>Hornepayne</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000268">
+<nameEn>New Carlisle</nameEn>
+<nameFr>New Carlisle</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000269">
+<nameEn>Bonaventure</nameEn>
+<nameFr>Bonaventure</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000270">
+<nameEn>Dolbeau-Mistassini</nameEn>
+<nameFr>Dolbeau-Mistassini</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000272">
+<nameEn>Onefour</nameEn>
+<nameFr>Onefour</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000273">
+<nameEn>Oak Point</nameEn>
+<nameFr>Oak Point</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000274">
+<nameEn>Elbow</nameEn>
+<nameFr>Elbow</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000275">
+<nameEn>Dawson</nameEn>
+<nameFr>Dawson</nameFr>
+<provinceCode>YT</provinceCode>
+</site>
+<site code="s0000276">
+<nameEn>McCreary</nameEn>
+<nameFr>McCreary</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000277">
+<nameEn>Breton</nameEn>
+<nameFr>Breton</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000278">
+<nameEn>Wynyard</nameEn>
+<nameFr>Wynyard</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000279">
+<nameEn>Hendrickson Creek</nameEn>
+<nameFr>Hendrickson Creek</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000280">
+<nameEn>St. John's</nameEn>
+<nameFr>St. John's</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000281">
+<nameEn>Midland</nameEn>
+<nameFr>Midland</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000282">
+<nameEn>Fort Erie</nameEn>
+<nameFr>Fort Erie</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000283">
+<nameEn>Port Colborne</nameEn>
+<nameFr>Port Colborne</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000284">
+<nameEn>Laurentides (Réserve faunique)</nameEn>
+<nameFr>Laurentides (Réserve faunique)</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000285">
+<nameEn>Point Lepreau</nameEn>
+<nameFr>Point Lepreau</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000286">
+<nameEn>Esquimalt</nameEn>
+<nameFr>Esquimalt</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000287">
+<nameEn>Parent</nameEn>
+<nameFr>Parent</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000288">
+<nameEn>Gouin (Réservoir)</nameEn>
+<nameFr>Gouin (Réservoir)</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000289">
+<nameEn>Pilot Mound</nameEn>
+<nameFr>Pilot Mound</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000290">
+<nameEn>Terrebonne</nameEn>
+<nameFr>Terrebonne</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000291">
+<nameEn>Princeton</nameEn>
+<nameFr>Princeton</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000292">
+<nameEn>Puntzi Mountain</nameEn>
+<nameFr>Puntzi Mountain</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000293">
+<nameEn>Burns Lake</nameEn>
+<nameFr>Burns Lake</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000294">
+<nameEn>Port Alberni</nameEn>
+<nameFr>Port Alberni</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000295">
+<nameEn>Tadoussac</nameEn>
+<nameFr>Tadoussac</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000296">
+<nameEn>Coaticook</nameEn>
+<nameFr>Coaticook</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000297">
+<nameEn>Lacombe</nameEn>
+<nameFr>Lacombe</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000298">
+<nameEn>Cape Race</nameEn>
+<nameFr>Cape Race</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000299">
+<nameEn>Red Earth Creek</nameEn>
+<nameFr>Red Earth Creek</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000300">
+<nameEn>Rosetown</nameEn>
+<nameFr>Rosetown</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000301">
+<nameEn>Bancroft</nameEn>
+<nameFr>Bancroft</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000302">
+<nameEn>Barry's Bay</nameEn>
+<nameFr>Barry's Bay</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000303">
+<nameEn>Haliburton</nameEn>
+<nameFr>Haliburton</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000304">
+<nameEn>Apsley</nameEn>
+<nameFr>Apsley</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000305">
+<nameEn>Kaladar</nameEn>
+<nameFr>Kaladar</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000306">
+<nameEn>Rocky Mountain House</nameEn>
+<nameFr>Rocky Mountain House</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000307">
+<nameEn>St. Peter's</nameEn>
+<nameFr>St. Peter's</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000308">
+<nameEn>Hart Island</nameEn>
+<nameFr>Hart Island</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000309">
+<nameEn>Rock River</nameEn>
+<nameFr>Rock River</nameFr>
+<provinceCode>YT</provinceCode>
+</site>
+<site code="s0000310">
+<nameEn>Crowsnest</nameEn>
+<nameFr>Crowsnest</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000311">
+<nameEn>Camrose</nameEn>
+<nameFr>Camrose</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000312">
+<nameEn>Wetaskiwin</nameEn>
+<nameFr>Wetaskiwin</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000313">
+<nameEn>Milk River</nameEn>
+<nameFr>Milk River</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000314">
+<nameEn>Percé</nameEn>
+<nameFr>Percé</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000315">
+<nameEn>Chandler</nameEn>
+<nameFr>Chandler</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000316">
+<nameEn>Gibsons</nameEn>
+<nameFr>Gibsons</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000317">
+<nameEn>Sechelt</nameEn>
+<nameFr>Sechelt</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000318">
+<nameEn>Halifax</nameEn>
+<nameFr>Halifax</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000319">
+<nameEn>Grande-Vallée</nameEn>
+<nameFr>Grande-Vallée</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000320">
+<nameEn>Cap Chat</nameEn>
+<nameFr>Cap Chat</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000321">
+<nameEn>Gaspésie (Parc national)</nameEn>
+<nameFr>Gaspésie (Parc national)</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000322">
+<nameEn>Sainte-Anne-Des-Monts</nameEn>
+<nameFr>Sainte-Anne-Des-Monts</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000323">
+<nameEn>Squamish</nameEn>
+<nameFr>Squamish</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000324">
+<nameEn>Salmon Arm</nameEn>
+<nameFr>Salmon Arm</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000325">
+<nameEn>Stratford</nameEn>
+<nameFr>Stratford</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000326">
+<nameEn>London</nameEn>
+<nameFr>London</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000327">
+<nameEn>Woodstock</nameEn>
+<nameFr>Woodstock</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000328">
+<nameEn>Strathroy</nameEn>
+<nameFr>Strathroy</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000329">
+<nameEn>St. Thomas</nameEn>
+<nameFr>St. Thomas</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000330">
+<nameEn>Spiritwood</nameEn>
+<nameFr>Spiritwood</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000331">
+<nameEn>Saint Andrews</nameEn>
+<nameFr>Saint Andrews</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000332">
+<nameEn>St. Stephen</nameEn>
+<nameFr>St. Stephen</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000333">
+<nameEn>La Malbaie</nameEn>
+<nameFr>La Malbaie</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000334">
+<nameEn>Montmagny</nameEn>
+<nameFr>Montmagny</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000335">
+<nameEn>Kamouraska</nameEn>
+<nameFr>Kamouraska</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000336">
+<nameEn>L'Islet</nameEn>
+<nameFr>L'Islet</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000337">
+<nameEn>Sprague</nameEn>
+<nameFr>Sprague</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000338">
+<nameEn>Sachs Harbour</nameEn>
+<nameFr>Sachs Harbour</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000339">
+<nameEn>Fisher Branch</nameEn>
+<nameFr>Fisher Branch</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000340">
+<nameEn>Sambaa K'e</nameEn>
+<nameFr>Sambaa K'e</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000341">
+<nameEn>Tetsa River (Provincial Park)</nameEn>
+<nameFr>Tetsa River (Parc provincial)</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000342">
+<nameEn>Baie-Saint-Paul</nameEn>
+<nameFr>Baie-Saint-Paul</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000343">
+<nameEn>Biggar</nameEn>
+<nameFr>Biggar</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000344">
+<nameEn>Scott</nameEn>
+<nameFr>Scott</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000345">
+<nameEn>Magog</nameEn>
+<nameFr>Magog</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000346">
+<nameEn>Trois-Rivières</nameEn>
+<nameFr>Trois-Rivières</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000347">
+<nameEn>Bécancour</nameEn>
+<nameFr>Bécancour</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000348">
+<nameEn>Louiseville</nameEn>
+<nameFr>Louiseville</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000349">
+<nameEn>Faro</nameEn>
+<nameFr>Faro</nameFr>
+<provinceCode>YT</provinceCode>
+</site>
+<site code="s0000350">
+<nameEn>Ross River</nameEn>
+<nameFr>Ross River</nameFr>
+<provinceCode>YT</provinceCode>
+</site>
+<site code="s0000351">
+<nameEn>Summerland</nameEn>
+<nameFr>Summerland</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000352">
+<nameEn>Shoal Lake</nameEn>
+<nameFr>Shoal Lake</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000353">
+<nameEn>Rouyn-Noranda</nameEn>
+<nameFr>Rouyn-Noranda</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000354">
+<nameEn>La Sarre</nameEn>
+<nameFr>La Sarre</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000355">
+<nameEn>Swift Current</nameEn>
+<nameFr>Swift Current</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000356">
+<nameEn>Vegreville</nameEn>
+<nameFr>Vegreville</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000357">
+<nameEn>Val Marie</nameEn>
+<nameFr>Val Marie</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000358">
+<nameEn>Vauxhall</nameEn>
+<nameFr>Vauxhall</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000359">
+<nameEn>Taber</nameEn>
+<nameFr>Taber</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000360">
+<nameEn>Cypress Hills (Provincial Park)</nameEn>
+<nameFr>Cypress Hills (Parc provincial)</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000361">
+<nameEn>Deux-Montagnes</nameEn>
+<nameFr>Deux-Montagnes</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000362">
+<nameEn>Vaudreuil-Dorion</nameEn>
+<nameFr>Vaudreuil-Dorion</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000363">
+<nameEn>Pincourt</nameEn>
+<nameFr>Pincourt</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000364">
+<nameEn>Digby</nameEn>
+<nameFr>Digby</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000365">
+<nameEn>Brier Island</nameEn>
+<nameFr>Brier Island</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000366">
+<nameEn>Yellowknife</nameEn>
+<nameFr>Yellowknife</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000367">
+<nameEn>Oakville</nameEn>
+<nameFr>Oakville</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000368">
+<nameEn>Burlington</nameEn>
+<nameFr>Burlington</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000369">
+<nameEn>Collins Bay</nameEn>
+<nameFr>Collins Bay</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000370">
+<nameEn>Western Head</nameEn>
+<nameFr>Western Head</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000371">
+<nameEn>Liverpool</nameEn>
+<nameFr>Liverpool</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000372">
+<nameEn>Weyburn</nameEn>
+<nameFr>Weyburn</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000373">
+<nameEn>White Rock</nameEn>
+<nameFr>White Rock</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000374">
+<nameEn>Peawanuck</nameEn>
+<nameFr>Peawanuck</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000375">
+<nameEn>Wasagaming</nameEn>
+<nameFr>Wasagaming</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000376">
+<nameEn>Muncho Lake</nameEn>
+<nameFr>Muncho Lake</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000377">
+<nameEn>Liard River</nameEn>
+<nameFr>Liard River</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000378">
+<nameEn>Poplar River</nameEn>
+<nameFr>Poplar River</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000379">
+<nameEn>Bow Valley (Provincial Park)</nameEn>
+<nameFr>Bow Valley (Parc provincial)</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000380">
+<nameEn>Roblin</nameEn>
+<nameFr>Roblin</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000381">
+<nameEn>Last Mountain Lake (Sanctuary)</nameEn>
+<nameFr>Last Mountain Lake (Sanctuaire)</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000382">
+<nameEn>Bow Island</nameEn>
+<nameFr>Bow Island</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000383">
+<nameEn>High River</nameEn>
+<nameFr>High River</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000384">
+<nameEn>Stavely</nameEn>
+<nameFr>Stavely</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000385">
+<nameEn>Tracadie-Sheila</nameEn>
+<nameFr>Tracadie-Sheila</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000386">
+<nameEn>Bas-Caraquet</nameEn>
+<nameFr>Bas-Caraquet</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000387">
+<nameEn>Outlook</nameEn>
+<nameFr>Outlook</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000388">
+<nameEn>Gameti</nameEn>
+<nameFr>Gameti</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000389">
+<nameEn>Indin River</nameEn>
+<nameFr>Indin River</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000390">
+<nameEn>Victoria (University of)</nameEn>
+<nameFr>Victoria (Université de)</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000391">
+<nameEn>Kootenay (National Park)</nameEn>
+<nameFr>Kootenay (Parc national)</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000392">
+<nameEn>Yoho (National Park)</nameEn>
+<nameFr>Yoho (Parc national)</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000393">
+<nameEn>Rimouski</nameEn>
+<nameFr>Rimouski</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000394">
+<nameEn>Iqaluit</nameEn>
+<nameFr>Iqaluit</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000395">
+<nameEn>Gull Bay</nameEn>
+<nameFr>Gull Bay</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000396">
+<nameEn>Rock Creek</nameEn>
+<nameFr>Rock Creek</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000397">
+<nameEn>Osoyoos</nameEn>
+<nameFr>Osoyoos</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000398">
+<nameEn>Chilliwack</nameEn>
+<nameFr>Chilliwack</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000399">
+<nameEn>Agassiz</nameEn>
+<nameFr>Agassiz</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000400">
+<nameEn>Channel-Port aux Basques</nameEn>
+<nameFr>Channel-Port aux Basques</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000401">
+<nameEn>Carberry</nameEn>
+<nameFr>Carberry</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000402">
+<nameEn>Shilo</nameEn>
+<nameFr>Shilo</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000403">
+<nameEn>Canmore</nameEn>
+<nameFr>Canmore</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000404">
+<nameEn>Banff</nameEn>
+<nameFr>Banff</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000405">
+<nameEn>Grand Étang</nameEn>
+<nameFr>Grand Étang</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000406">
+<nameEn>Amqui</nameEn>
+<nameFr>Amqui</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000407">
+<nameEn>Matapedia</nameEn>
+<nameFr>Matapédia</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000408">
+<nameEn>Vallée de la Matapédia</nameEn>
+<nameFr>Vallée de la Matapédia</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000409">
+<nameEn>Atlin</nameEn>
+<nameFr>Atlin</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000410">
+<nameEn>Teslin</nameEn>
+<nameFr>Teslin</nameFr>
+<provinceCode>YT</provinceCode>
+</site>
+<site code="s0000411">
+<nameEn>Thunder Bay</nameEn>
+<nameFr>Thunder Bay</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000412">
+<nameEn>Arctic Bay</nameEn>
+<nameFr>Arctic Bay</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000413">
+<nameEn>Barrhead</nameEn>
+<nameFr>Barrhead</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000414">
+<nameEn>Orillia</nameEn>
+<nameFr>Orillia</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000415">
+<nameEn>Barrie</nameEn>
+<nameFr>Barrie</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000416">
+<nameEn>Lévis</nameEn>
+<nameFr>Lévis</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000417">
+<nameEn>Tadoule Lake</nameEn>
+<nameFr>Tadoule Lake</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000418">
+<nameEn>Greenstone (Beardmore)</nameEn>
+<nameFr>Greenstone (Beardmore)</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000419">
+<nameEn>Nipigon</nameEn>
+<nameFr>Nipigon</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000420">
+<nameEn>Chéticamp</nameEn>
+<nameFr>Chéticamp</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000421">
+<nameEn>Carmacks</nameEn>
+<nameFr>Carmacks</nameFr>
+<provinceCode>YT</provinceCode>
+</site>
+<site code="s0000422">
+<nameEn>Tobermory</nameEn>
+<nameFr>Tobermory</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000423">
+<nameEn>Deline</nameEn>
+<nameFr>Deline</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000424">
+<nameEn>Simcoe</nameEn>
+<nameFr>Simcoe</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000425">
+<nameEn>Tillsonburg</nameEn>
+<nameFr>Tillsonburg</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000426">
+<nameEn>Norfolk</nameEn>
+<nameFr>Norfolk</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000427">
+<nameEn>Westlock</nameEn>
+<nameFr>Westlock</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000428">
+<nameEn>Ear Falls</nameEn>
+<nameFr>Ear Falls</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000429">
+<nameEn>New Tecumseth</nameEn>
+<nameFr>New Tecumseth</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000430">
+<nameEn>Ottawa (Kanata - Orléans)</nameEn>
+<nameFr>Ottawa (Kanata - Orléans)</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000431">
+<nameEn>Leamington</nameEn>
+<nameFr>Leamington</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000432">
+<nameEn>Ulukhaktok</nameEn>
+<nameFr>Ulukhaktok</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000433">
+<nameEn>Ingonish</nameEn>
+<nameFr>Ingonish</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000434">
+<nameEn>Smiths Falls</nameEn>
+<nameFr>Smiths Falls</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000435">
+<nameEn>Sharbot Lake</nameEn>
+<nameFr>Sharbot Lake</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000436">
+<nameEn>Kemptville</nameEn>
+<nameFr>Kemptville</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000437">
+<nameEn>Kirkland Lake</nameEn>
+<nameFr>Kirkland Lake</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000438">
+<nameEn>Windsor</nameEn>
+<nameFr>Windsor</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000439">
+<nameEn>Kentville</nameEn>
+<nameFr>Kentville</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000440">
+<nameEn>Lunenburg</nameEn>
+<nameFr>Lunenburg</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000441">
+<nameEn>Bridgewater</nameEn>
+<nameFr>Bridgewater</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000442">
+<nameEn>Wekweeti</nameEn>
+<nameFr>Wekweeti</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000443">
+<nameEn>Lutselke</nameEn>
+<nameFr>Lutselke</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000444">
+<nameEn>Morden</nameEn>
+<nameFr>Morden</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000445">
+<nameEn>Winkler</nameEn>
+<nameFr>Winkler</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000446">
+<nameEn>Sheet Harbour</nameEn>
+<nameFr>Sheet Harbour</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000447">
+<nameEn>Malay Falls</nameEn>
+<nameFr>Malay Falls</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000448">
+<nameEn>Nordegg</nameEn>
+<nameFr>Nordegg</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000449">
+<nameEn>Sackville</nameEn>
+<nameFr>Sackville</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000450">
+<nameEn>Amherst</nameEn>
+<nameFr>Amherst</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000451">
+<nameEn>Parry Sound</nameEn>
+<nameFr>Parry Sound</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000452">
+<nameEn>Dunchurch</nameEn>
+<nameFr>Dunchurch</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000453">
+<nameEn>Stony Plain</nameEn>
+<nameFr>Stony Plain</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000454">
+<nameEn>Chatham-Kent</nameEn>
+<nameFr>Chatham-Kent</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000455">
+<nameEn>Rodney</nameEn>
+<nameFr>Rodney</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000456">
+<nameEn>Rocky Harbour</nameEn>
+<nameFr>Rocky Harbour</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000457">
+<nameEn>Gros Morne</nameEn>
+<nameFr>Gros Morne</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000458">
+<nameEn>Toronto</nameEn>
+<nameFr>Toronto</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000459">
+<nameEn>Lanaudière</nameEn>
+<nameFr>Lanaudière</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000460">
+<nameEn>Port Hawkesbury</nameEn>
+<nameFr>Port Hawkesbury</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000461">
+<nameEn>Tracadie</nameEn>
+<nameFr>Tracadie</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000462">
+<nameEn>Antigonish</nameEn>
+<nameFr>Antigonish</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000463">
+<nameEn>Cape George</nameEn>
+<nameFr>Cape George</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000464">
+<nameEn>Guysborough</nameEn>
+<nameFr>Guysborough</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000465">
+<nameEn>Tatlayoko Lake</nameEn>
+<nameFr>Tatlayoko Lake</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000466">
+<nameEn>Clarenville</nameEn>
+<nameFr>Clarenville</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000467">
+<nameEn>Terra Nova (National Park)</nameEn>
+<nameFr>Terra Nova (Parc national)</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000468">
+<nameEn>Drayton Valley</nameEn>
+<nameFr>Drayton Valley</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000469">
+<nameEn>Vineland</nameEn>
+<nameFr>Vineland</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000470">
+<nameEn>Lincoln</nameEn>
+<nameFr>Lincoln</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000471">
+<nameEn>Trail</nameEn>
+<nameFr>Trail</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000472">
+<nameEn>Winnipeg (The Forks)</nameEn>
+<nameFr>Winnipeg (La Fourche)</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000473">
+<nameEn>Winterland</nameEn>
+<nameFr>Winterland</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000474">
+<nameEn>Marystown</nameEn>
+<nameFr>Marystown</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000475">
+<nameEn>Grand Bank</nameEn>
+<nameFr>Grand Bank</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000476">
+<nameEn>Nahanni Butte</nameEn>
+<nameFr>Nahanni Butte</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000477">
+<nameEn>Whitecourt</nameEn>
+<nameFr>Whitecourt</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000478">
+<nameEn>La Grande-Quatre</nameEn>
+<nameFr>La Grande-Quatre</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000479">
+<nameEn>Sault Ste. Marie</nameEn>
+<nameFr>Sault Ste. Marie</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000480">
+<nameEn>Kangirsuk</nameEn>
+<nameFr>Kangirsuk</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000481">
+<nameEn>Tofino</nameEn>
+<nameFr>Tofino</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000482">
+<nameEn>Ucluelet</nameEn>
+<nameFr>Ucluelet</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000483">
+<nameEn>Baie-Comeau</nameEn>
+<nameFr>Baie-Comeau</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000484">
+<nameEn>Forestville</nameEn>
+<nameFr>Forestville</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000485">
+<nameEn>Bella Coola</nameEn>
+<nameFr>Bella Coola</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000486">
+<nameEn>Bagotville</nameEn>
+<nameFr>Bagotville</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000487">
+<nameEn>Baker Lake</nameEn>
+<nameFr>Baker Lake</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000488">
+<nameEn>Campbell River</nameEn>
+<nameFr>Campbell River</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000489">
+<nameEn>Alliston</nameEn>
+<nameFr>Alliston</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000490">
+<nameEn>Minnedosa</nameEn>
+<nameFr>Minnedosa</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000491">
+<nameEn>Souris</nameEn>
+<nameFr>Souris</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000492">
+<nameEn>Brandon</nameEn>
+<nameFr>Brandon</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000493">
+<nameEn>Cochrane</nameEn>
+<nameFr>Cochrane</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000494">
+<nameEn>Blanc-Sablon</nameEn>
+<nameFr>Blanc-Sablon</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000495">
+<nameEn>Cambridge Bay</nameEn>
+<nameFr>Cambridge Bay</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000496">
+<nameEn>Nanaimo</nameEn>
+<nameFr>Nanaimo</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000497">
+<nameEn>Castlegar</nameEn>
+<nameFr>Castlegar</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000498">
+<nameEn>Kugluktuk</nameEn>
+<nameFr>Kugluktuk</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000499">
+<nameEn>Blue River</nameEn>
+<nameFr>Blue River</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000500">
+<nameEn>Chetwynd</nameEn>
+<nameFr>Chetwynd</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000501">
+<nameEn>Chesterfield</nameEn>
+<nameFr>Chesterfield</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000502">
+<nameEn>Chipman</nameEn>
+<nameFr>Chipman</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000503">
+<nameEn>Doaktown</nameEn>
+<nameFr>Doaktown</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000504">
+<nameEn>Clyde River</nameEn>
+<nameFr>Clyde River</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000505">
+<nameEn>Kluane Lake</nameEn>
+<nameFr>Lac Kluane</nameFr>
+<provinceCode>YT</provinceCode>
+</site>
+<site code="s0000506">
+<nameEn>Burwash Landing</nameEn>
+<nameFr>Burwash Landing</nameFr>
+<provinceCode>YT</provinceCode>
+</site>
+<site code="s0000507">
+<nameEn>Deer Lake</nameEn>
+<nameFr>Deer Lake</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000508">
+<nameEn>Dauphin</nameEn>
+<nameFr>Dauphin</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000509">
+<nameEn>Dawson Creek</nameEn>
+<nameFr>Dawson Creek</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000510">
+<nameEn>Edmonton (Int'l Aprt)</nameEn>
+<nameFr>Edmonton (Aprt int.)</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000511">
+<nameEn>Arviat</nameEn>
+<nameFr>Arviat</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000512">
+<nameEn>Elliot Lake</nameEn>
+<nameFr>Elliot Lake</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000513">
+<nameEn>Blind River</nameEn>
+<nameFr>Blind River</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000514">
+<nameEn>Oxbow</nameEn>
+<nameFr>Oxbow</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000515">
+<nameEn>Carlyle</nameEn>
+<nameFr>Carlyle</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000516">
+<nameEn>Estevan</nameEn>
+<nameFr>Estevan</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000517">
+<nameEn>Fort Severn</nameEn>
+<nameFr>Fort Severn</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000518">
+<nameEn>Edson</nameEn>
+<nameFr>Edson</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000519">
+<nameEn>Inuvik</nameEn>
+<nameFr>Inuvik</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000520">
+<nameEn>Armstrong</nameEn>
+<nameFr>Armstrong</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000521">
+<nameEn>Oromocto</nameEn>
+<nameFr>Oromocto</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000522">
+<nameEn>Woodstock</nameEn>
+<nameFr>Woodstock</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000523">
+<nameEn>Mildred Lake</nameEn>
+<nameFr>Mildred Lake</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000524">
+<nameEn>Fort Resolution</nameEn>
+<nameFr>Fort Resolution</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000525">
+<nameEn>Fort Simpson</nameEn>
+<nameFr>Fort Simpson</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000526">
+<nameEn>Makkovik</nameEn>
+<nameFr>Makkovik</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000527">
+<nameEn>Golden</nameEn>
+<nameFr>Golden</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000528">
+<nameEn>Greater Napanee</nameEn>
+<nameFr>Greater Napanee</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000529">
+<nameEn>Sydenham</nameEn>
+<nameFr>Sydenham</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000530">
+<nameEn>Westport</nameEn>
+<nameFr>Westport</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000531">
+<nameEn>Kingston</nameEn>
+<nameFr>Kingston</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000532">
+<nameEn>La Grande Rivière</nameEn>
+<nameFr>La Grande Rivière</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000533">
+<nameEn>Arnes</nameEn>
+<nameFr>Arnes</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000534">
+<nameEn>Gimli</nameEn>
+<nameFr>Gimli</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000535">
+<nameEn>Gaspé</nameEn>
+<nameFr>Gaspé</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000536">
+<nameEn>Forillon</nameEn>
+<nameFr>Forillon</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000537">
+<nameEn>Forillon (National Park)</nameEn>
+<nameFr>Forillon ( Parc national)</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000538">
+<nameEn>Greenstone (Geraldton)</nameEn>
+<nameFr>Greenstone (Geraldton)</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000539">
+<nameEn>Greenstone (Nakina)</nameEn>
+<nameFr>Greenstone (Nakina)</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000540">
+<nameEn>Igloolik</nameEn>
+<nameFr>Igloolik</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000541">
+<nameEn>Havre St-Pierre</nameEn>
+<nameFr>Havre St-Pierre</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000542">
+<nameEn>Kuujjuarapik</nameEn>
+<nameFr>Kuujjuarapik</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000543">
+<nameEn>Gillam</nameEn>
+<nameFr>Gillam</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000544">
+<nameEn>Quaqtaq</nameEn>
+<nameFr>Quaqtaq</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000545">
+<nameEn>Hudson Bay</nameEn>
+<nameFr>Hudson Bay</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000546">
+<nameEn>Dryden</nameEn>
+<nameFr>Dryden</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000547">
+<nameEn>Hope</nameEn>
+<nameFr>Hope</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000548">
+<nameEn>Haldimand County</nameEn>
+<nameFr>Haldimand County</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000549">
+<nameEn>Hamilton</nameEn>
+<nameFr>Hamilton</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000550">
+<nameEn>Brantford</nameEn>
+<nameFr>Brantford</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000551">
+<nameEn>Longueuil</nameEn>
+<nameFr>Longueuil</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000552">
+<nameEn>Richelieu</nameEn>
+<nameFr>Richelieu</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000553">
+<nameEn>Carignan</nameEn>
+<nameFr>Carignan</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000554">
+<nameEn>Chambly</nameEn>
+<nameFr>Chambly</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000555">
+<nameEn>Mont-Saint-Hilaire</nameEn>
+<nameFr>Mont-Saint-Hilaire</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000556">
+<nameEn>Otterburn Park</nameEn>
+<nameFr>Otterburn Park</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000557">
+<nameEn>Saint-Amable</nameEn>
+<nameFr>Saint-Amable</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000558">
+<nameEn>Saint-Basile Le Grand</nameEn>
+<nameFr>Saint-Basile Le Grand</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000559">
+<nameEn>Sainte-Julie</nameEn>
+<nameFr>Sainte-Julie</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000560">
+<nameEn>Enterprise</nameEn>
+<nameFr>Enterprise</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000561">
+<nameEn>Hay River</nameEn>
+<nameFr>Hay River</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000562">
+<nameEn>Summerside</nameEn>
+<nameFr>Summerside</nameFr>
+<provinceCode>PE</provinceCode>
+</site>
+<site code="s0000563">
+<nameEn>Ivujivik</nameEn>
+<nameFr>Ivujivik</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000564">
+<nameEn>Pond Inlet</nameEn>
+<nameFr>Pond Inlet</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000565">
+<nameEn>Island Lake</nameEn>
+<nameFr>Island Lake</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000566">
+<nameEn>Gods Lake</nameEn>
+<nameFr>Gods Lake</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000567">
+<nameEn>Stephenville</nameEn>
+<nameFr>Stephenville</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000568">
+<nameEn>Kamloops</nameEn>
+<nameFr>Kamloops</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000569">
+<nameEn>Cache Creek</nameEn>
+<nameFr>Cache Creek</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000570">
+<nameEn>Aklavik</nameEn>
+<nameFr>Aklavik</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000571">
+<nameEn>Guelph</nameEn>
+<nameFr>Guelph</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000572">
+<nameEn>Cambridge</nameEn>
+<nameFr>Cambridge</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000573">
+<nameEn>Kitchener-Waterloo</nameEn>
+<nameFr>Kitchener-Waterloo</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000574">
+<nameEn>Kangiqsujuaq</nameEn>
+<nameFr>Kangiqsujuaq</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000575">
+<nameEn>Lac Raglan</nameEn>
+<nameFr>Lac Raglan</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000576">
+<nameEn>Key Lake</nameEn>
+<nameFr>Key Lake</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000577">
+<nameEn>Schefferville</nameEn>
+<nameFr>Schefferville</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000578">
+<nameEn>Akulivik</nameEn>
+<nameFr>Akulivik</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000579">
+<nameEn>Waskaganish</nameEn>
+<nameFr>Waskaganish</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000580">
+<nameEn>Baie-James</nameEn>
+<nameFr>Baie-James</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000581">
+<nameEn>Kindersley</nameEn>
+<nameFr>Kindersley</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000582">
+<nameEn>Newmarket</nameEn>
+<nameFr>Newmarket</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000583">
+<nameEn>Charlottetown</nameEn>
+<nameFr>Charlottetown</nameFr>
+<provinceCode>PE</provinceCode>
+</site>
+<site code="s0000584">
+<nameEn>Vaughan</nameEn>
+<nameFr>Vaughan</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000585">
+<nameEn>Markham</nameEn>
+<nameFr>Markham</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000586">
+<nameEn>Aupaluk</nameEn>
+<nameFr>Aupaluk</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000587">
+<nameEn>Kimmirut</nameEn>
+<nameFr>Kimmirut</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000588">
+<nameEn>Chapleau</nameEn>
+<nameFr>Chapleau</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000589">
+<nameEn>Meadow Lake</nameEn>
+<nameFr>Meadow Lake</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000590">
+<nameEn>Lloydminster</nameEn>
+<nameFr>Lloydminster</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000591">
+<nameEn>Kangiqsualujjuaq</nameEn>
+<nameFr>Kangiqsualujjuaq</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000592">
+<nameEn>Kelowna</nameEn>
+<nameFr>Kelowna</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000593">
+<nameEn>Mayo</nameEn>
+<nameFr>Mayo</nameFr>
+<provinceCode>YT</provinceCode>
+</site>
+<site code="s0000594">
+<nameEn>Mary's Harbour</nameEn>
+<nameFr>Mary's Harbour</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000595">
+<nameEn>Fort McMurray</nameEn>
+<nameFr>Fort McMurray</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000596">
+<nameEn>Moosonee</nameEn>
+<nameFr>Moosonee</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000597">
+<nameEn>Fort Albany</nameEn>
+<nameFr>Fort Albany</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000598">
+<nameEn>Chibougamau</nameEn>
+<nameFr>Chibougamau</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000599">
+<nameEn>Umiujaq</nameEn>
+<nameFr>Umiujaq</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000600">
+<nameEn>Mirabel</nameEn>
+<nameFr>Mirabel</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000601">
+<nameEn>Saint-Jérôme</nameEn>
+<nameFr>Saint-Jérôme</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000602">
+<nameEn>Lachute</nameEn>
+<nameFr>Lachute</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000603">
+<nameEn>Blainville</nameEn>
+<nameFr>Blainville</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000604">
+<nameEn>Boisbriand</nameEn>
+<nameFr>Boisbriand</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000605">
+<nameEn>Lorraine</nameEn>
+<nameFr>Lorraine</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000606">
+<nameEn>Rosemère</nameEn>
+<nameFr>Rosemère</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000607">
+<nameEn>Sainte-Anne-Des-Plaines</nameEn>
+<nameFr>Sainte-Anne-Des-Plaines</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000608">
+<nameEn>Sainte-Thérèse</nameEn>
+<nameFr>Sainte-Thérèse</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000609">
+<nameEn>Saint-Eustache</nameEn>
+<nameFr>Saint-Eustache</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000610">
+<nameEn>Natashquan</nameEn>
+<nameFr>Natashquan</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000611">
+<nameEn>Gatineau</nameEn>
+<nameFr>Gatineau</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000612">
+<nameEn>Papineau</nameEn>
+<nameFr>Papineau</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000613">
+<nameEn>Pontiac</nameEn>
+<nameFr>Pontiac</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000614">
+<nameEn>Val-des-Monts</nameEn>
+<nameFr>Val-des-Monts</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000615">
+<nameEn>Chelsea</nameEn>
+<nameFr>Chelsea</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000616">
+<nameEn>Norway House</nameEn>
+<nameFr>Norway House</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000617">
+<nameEn>Matagami</nameEn>
+<nameFr>Matagami</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000618">
+<nameEn>Ekati (Lac de Gras)</nameEn>
+<nameFr>Ekati (Lac de Gras)</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000619">
+<nameEn>Cold Lake</nameEn>
+<nameFr>Cold Lake</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000620">
+<nameEn>Québec</nameEn>
+<nameFr>Québec</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000621">
+<nameEn>High Level</nameEn>
+<nameFr>High Level</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000622">
+<nameEn>Grand Manan</nameEn>
+<nameFr>Grand Manan</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000623">
+<nameEn>Ottawa (Richmond - Metcalfe)</nameEn>
+<nameFr>Ottawa (Richmond - Metcalfe)</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000624">
+<nameEn>Prince Albert</nameEn>
+<nameFr>Prince Albert</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000625">
+<nameEn>Peace River</nameEn>
+<nameFr>Peace River</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000626">
+<nameEn>Portage la Prairie</nameEn>
+<nameFr>Portage la Prairie</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000627">
+<nameEn>Inukjuak</nameEn>
+<nameFr>Inukjuak</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000628">
+<nameEn>Pickle Lake</nameEn>
+<nameFr>Pickle Lake</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000629">
+<nameEn>Peterborough</nameEn>
+<nameFr>Peterborough</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000630">
+<nameEn>Port Perry</nameEn>
+<nameFr>Port Perry</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000631">
+<nameEn>Kawartha Lakes (Lindsay)</nameEn>
+<nameFr>Kawartha Lakes (Lindsay)</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000632">
+<nameEn>Kawartha Lakes (Fenelon Falls)</nameEn>
+<nameFr>Kawartha Lakes (Fenelon Falls)</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000633">
+<nameEn>Prince Rupert</nameEn>
+<nameFr>Prince Rupert</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000634">
+<nameEn>Powell River</nameEn>
+<nameFr>Powell River</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000635">
+<nameEn>Montréal</nameEn>
+<nameFr>Montréal</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000636">
+<nameEn>Fort Chipewyan</nameEn>
+<nameFr>Fort Chipewyan</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000637">
+<nameEn>Burk's Falls</nameEn>
+<nameFr>Burk's Falls</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000638">
+<nameEn>Gravenhurst</nameEn>
+<nameFr>Gravenhurst</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000639">
+<nameEn>Port Carling</nameEn>
+<nameFr>Port Carling</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000640">
+<nameEn>Huntsville</nameEn>
+<nameFr>Huntsville</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000641">
+<nameEn>Bracebridge</nameEn>
+<nameFr>Bracebridge</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000642">
+<nameEn>Muskoka</nameEn>
+<nameFr>Muskoka</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000643">
+<nameEn>Rainbow Lake</nameEn>
+<nameFr>Rainbow Lake</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000644">
+<nameEn>The Pas</nameEn>
+<nameFr>The Pas</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000645">
+<nameEn>Red Deer</nameEn>
+<nameFr>Red Deer</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000646">
+<nameEn>Windsor</nameEn>
+<nameFr>Windsor</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000647">
+<nameEn>Good Hope Lake</nameEn>
+<nameFr>Good Hope Lake</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000648">
+<nameEn>Watson Lake</nameEn>
+<nameFr>Watson Lake</nameFr>
+<provinceCode>YT</provinceCode>
+</site>
+<site code="s0000649">
+<nameEn>Yarmouth</nameEn>
+<nameFr>Yarmouth</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000650">
+<nameEn>Sioux Narrows</nameEn>
+<nameFr>Sioux Narrows</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000651">
+<nameEn>Kenora</nameEn>
+<nameFr>Kenora</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000652">
+<nameEn>Lethbridge</nameEn>
+<nameFr>Lethbridge</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000653">
+<nameEn>Shediac</nameEn>
+<nameFr>Shédiac</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000654">
+<nameEn>Moncton</nameEn>
+<nameFr>Moncton</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000655">
+<nameEn>Hopewell</nameEn>
+<nameFr>Hopewell</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000656">
+<nameEn>Comox</nameEn>
+<nameFr>Comox</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000657">
+<nameEn>Courtenay</nameEn>
+<nameFr>Courtenay</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000658">
+<nameEn>Brampton</nameEn>
+<nameFr>Brampton</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000659">
+<nameEn>Kakabeka Falls</nameEn>
+<nameFr>Kakabeka Falls</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000660">
+<nameEn>Dorion</nameEn>
+<nameFr>Dorion</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000661">
+<nameEn>Grande Prairie</nameEn>
+<nameFr>Grande Prairie</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000662">
+<nameEn>Canora</nameEn>
+<nameFr>Canora</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000663">
+<nameEn>Yorkton</nameEn>
+<nameFr>Yorkton</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000664">
+<nameEn>Kamsack</nameEn>
+<nameFr>Kamsack</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000665">
+<nameEn>Melville</nameEn>
+<nameFr>Melville</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000666">
+<nameEn>North Battleford</nameEn>
+<nameFr>North Battleford</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000667">
+<nameEn>Gander</nameEn>
+<nameFr>Gander</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000668">
+<nameEn>Campbellton</nameEn>
+<nameFr>Campbellton</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000669">
+<nameEn>Lewisporte</nameEn>
+<nameFr>Lewisporte</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000670">
+<nameEn>Sydney</nameEn>
+<nameFr>Sydney</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000671">
+<nameEn>Quesnel</nameEn>
+<nameFr>Quesnel</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000672">
+<nameEn>Resolute</nameEn>
+<nameFr>Resolute</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000673">
+<nameEn>Roberval</nameEn>
+<nameFr>Roberval</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000674">
+<nameEn>Lac-Saint-Jean</nameEn>
+<nameFr>Lac-Saint-Jean</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000675">
+<nameEn>Saint-Félicien</nameEn>
+<nameFr>Saint-Félicien</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000676">
+<nameEn>Red Lake</nameEn>
+<nameFr>Red Lake</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000677">
+<nameEn>Pikangikum</nameEn>
+<nameFr>Pikangikum</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000678">
+<nameEn>Rankin Inlet</nameEn>
+<nameFr>Rankin Inlet</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000679">
+<nameEn>Revelstoke</nameEn>
+<nameFr>Revelstoke</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000680">
+<nameEn>Greater Sudbury</nameEn>
+<nameFr>Grand Sudbury</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000681">
+<nameEn>Sherbrooke</nameEn>
+<nameFr>Sherbrooke</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000682">
+<nameEn>Val-des-Sources</nameEn>
+<nameFr>Val-des-Sources</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000683">
+<nameEn>Suffield</nameEn>
+<nameFr>Suffield</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000684">
+<nameEn>Stony Rapids</nameEn>
+<nameFr>Stony Rapids</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000685">
+<nameEn>Quispamsis</nameEn>
+<nameFr>Quispamsis</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000686">
+<nameEn>Sussex</nameEn>
+<nameFr>Sussex</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000687">
+<nameEn>Saint John</nameEn>
+<nameFr>Saint John</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000688">
+<nameEn>Fundy (National Park)</nameEn>
+<nameFr>Fundy (Parc national)</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000689">
+<nameEn>Sanikiluaq</nameEn>
+<nameFr>Sanikiluaq</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000690">
+<nameEn>Fort Smith</nameEn>
+<nameFr>Fort Smith</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000691">
+<nameEn>St. Catharines</nameEn>
+<nameFr>St. Catharines</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000692">
+<nameEn>Niagara Falls</nameEn>
+<nameFr>Niagara Falls</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000693">
+<nameEn>Nanisivik</nameEn>
+<nameFr>Nanisivik</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000694">
+<nameEn>Kinngait</nameEn>
+<nameFr>Kinngait</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000695">
+<nameEn>Thompson</nameEn>
+<nameFr>Thompson</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000696">
+<nameEn>Sachigo Lake</nameEn>
+<nameFr>Sachigo Lake</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000697">
+<nameEn>Big Trout Lake</nameEn>
+<nameFr>Big Trout Lake</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000698">
+<nameEn>Wunnummin Lake</nameEn>
+<nameFr>Wunnummin Lake</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000699">
+<nameEn>Tasiujaq</nameEn>
+<nameFr>Tasiujaq</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000700">
+<nameEn>Stirling</nameEn>
+<nameFr>Stirling</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000701">
+<nameEn>Trenton</nameEn>
+<nameFr>Trenton</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000702">
+<nameEn>Prince Edward (Picton)</nameEn>
+<nameFr>Prince Edward (Picton)</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000703">
+<nameEn>Belleville</nameEn>
+<nameFr>Belleville</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000704">
+<nameEn>Quinte West</nameEn>
+<nameFr>Quinte Ouest</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000705">
+<nameEn>Timmins</nameEn>
+<nameFr>Timmins</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000706">
+<nameEn>Cochrane</nameEn>
+<nameFr>Cochrane</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000707">
+<nameEn>Oshawa</nameEn>
+<nameFr>Oshawa</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000708">
+<nameEn>Whitby</nameEn>
+<nameFr>Whitby</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000709">
+<nameEn>Shawinigan</nameEn>
+<nameFr>Shawinigan</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000710">
+<nameEn>Pickering</nameEn>
+<nameFr>Pickering</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000711">
+<nameEn>Puvirnituq</nameEn>
+<nameFr>Puvirnituq</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000712">
+<nameEn>Laval</nameEn>
+<nameFr>Laval</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000713">
+<nameEn>Naujaat</nameEn>
+<nameFr>Naujaat</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000714">
+<nameEn>Sanirajak</nameEn>
+<nameFr>Sanirajak</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000715">
+<nameEn>La Ronge</nameEn>
+<nameFr>La Ronge</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000716">
+<nameEn>Qikiqtarjuaq</nameEn>
+<nameFr>Qikiqtarjuaqq</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000717">
+<nameEn>Val-d'Or</nameEn>
+<nameFr>Val-d'Or</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000718">
+<nameEn>Amos</nameEn>
+<nameFr>Amos</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000719">
+<nameEn>Kuujjuaq</nameEn>
+<nameFr>Kuujjuaq</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000720">
+<nameEn>Norman Wells</nameEn>
+<nameFr>Norman Wells</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000721">
+<nameEn>Joliette</nameEn>
+<nameFr>Joliette</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000722">
+<nameEn>La Loche</nameEn>
+<nameFr>La Loche</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000723">
+<nameEn>Buffalo Narrows</nameEn>
+<nameFr>Buffalo Narrows</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000724">
+<nameEn>Wiarton</nameEn>
+<nameFr>Wiarton</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000725">
+<nameEn>Port Elgin</nameEn>
+<nameFr>Port Elgin</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000726">
+<nameEn>Saugeen Shores</nameEn>
+<nameFr>Saugeen Shores</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000727">
+<nameEn>South Bruce Peninsula</nameEn>
+<nameFr>South Bruce Peninsula</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000728">
+<nameEn>Owen Sound</nameEn>
+<nameFr>Owen Sound</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000729">
+<nameEn>Petawawa</nameEn>
+<nameFr>Petawawa</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000730">
+<nameEn>Pembroke</nameEn>
+<nameFr>Pembroke</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000731">
+<nameEn>Renfrew</nameEn>
+<nameFr>Renfrew</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000732">
+<nameEn>Deep River</nameEn>
+<nameFr>Deep River</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000733">
+<nameEn>Moosomin</nameEn>
+<nameFr>Moosomin</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000734">
+<nameEn>Richer</nameEn>
+<nameFr>Richer</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000735">
+<nameEn>Victoria Harbour</nameEn>
+<nameFr>Victoria Harbour</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000736">
+<nameEn>Wabush Lake</nameEn>
+<nameFr>Wabush Lake</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000737">
+<nameEn>Labrador City</nameEn>
+<nameFr>Labrador City</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000738">
+<nameEn>Fermont</nameEn>
+<nameFr>Fermont</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000739">
+<nameEn>Williams Lake</nameEn>
+<nameFr>Williams Lake</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000740">
+<nameEn>Wrigley</nameEn>
+<nameFr>Wrigley</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000741">
+<nameEn>Cranbrook</nameEn>
+<nameFr>Cranbrook</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000742">
+<nameEn>Saint-Timothée</nameEn>
+<nameFr>Saint-Timothée</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000743">
+<nameEn>Rosthern</nameEn>
+<nameFr>Rosthern</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000744">
+<nameEn>Lambton Shores</nameEn>
+<nameFr>Lambton Shores</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000745">
+<nameEn>Medicine Hat</nameEn>
+<nameFr>Medicine Hat</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000746">
+<nameEn>Fort St. John</nameEn>
+<nameFr>Fort St. John</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000747">
+<nameEn>Savant Lake</nameEn>
+<nameFr>Savant Lake</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000748">
+<nameEn>Sioux Lookout</nameEn>
+<nameFr>Sioux Lookout</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000749">
+<nameEn>Whale Cove</nameEn>
+<nameFr>Whale Cove</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000750">
+<nameEn>Pangnirtung</nameEn>
+<nameFr>Pangnirtung</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000751">
+<nameEn>Beaver Creek</nameEn>
+<nameFr>Beaver Creek</nameFr>
+<provinceCode>YT</provinceCode>
+</site>
+<site code="s0000752">
+<nameEn>Earlton</nameEn>
+<nameFr>Earlton</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000753">
+<nameEn>Temiskaming Shores</nameEn>
+<nameFr>Temiskaming Shores</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000754">
+<nameEn>Vanderhoof</nameEn>
+<nameFr>Vanderhoof</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000755">
+<nameEn>Repentigny</nameEn>
+<nameFr>Repentigny</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000756">
+<nameEn>Kitimat</nameEn>
+<nameFr>Kitimat</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000757">
+<nameEn>Terrace</nameEn>
+<nameFr>Terrace</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000758">
+<nameEn>Abbotsford</nameEn>
+<nameFr>Abbotsford</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000759">
+<nameEn>Paulatuk</nameEn>
+<nameFr>Paulatuk</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000760">
+<nameEn>Carcross</nameEn>
+<nameFr>Carcross</nameFr>
+<provinceCode>YT</provinceCode>
+</site>
+<site code="s0000761">
+<nameEn>Wawa</nameEn>
+<nameFr>Wawa</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000762">
+<nameEn>Montreal River Harbour</nameEn>
+<nameFr>Montreal River Harbour</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000763">
+<nameEn>Lake Superior (Provincial Park)</nameEn>
+<nameFr>Lac Supérieur (Parc provincial)</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000764">
+<nameEn>White River</nameEn>
+<nameFr>White River</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000765">
+<nameEn>North Bay</nameEn>
+<nameFr>North Bay</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000766">
+<nameEn>West Nipissing</nameEn>
+<nameFr>Nipissing Ouest</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000767">
+<nameEn>Okotoks</nameEn>
+<nameFr>Okotoks</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000768">
+<nameEn>Airdrie</nameEn>
+<nameFr>Airdrie</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000769">
+<nameEn>Delson</nameEn>
+<nameFr>Delson</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000770">
+<nameEn>Smithers</nameEn>
+<nameFr>Smithers</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000771">
+<nameEn>Fort Nelson</nameEn>
+<nameFr>Fort Nelson</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000772">
+<nameEn>Penticton</nameEn>
+<nameFr>Penticton</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000773">
+<nameEn>Richmond Hill</nameEn>
+<nameFr>Richmond Hill</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000774">
+<nameEn>Taloyoak</nameEn>
+<nameFr>Taloyoak</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000775">
+<nameEn>Victoria</nameEn>
+<nameFr>Victoria</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000776">
+<nameEn>Leaf Rapids</nameEn>
+<nameFr>Leaf Rapids</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000777">
+<nameEn>Lynn Lake</nameEn>
+<nameFr>Lynn Lake</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000778">
+<nameEn>Brochet</nameEn>
+<nameFr>Brochet</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000779">
+<nameEn>Churchill</nameEn>
+<nameFr>Churchill</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000780">
+<nameEn>Happy Valley-Goose Bay</nameEn>
+<nameFr>Happy Valley-Goose Bay</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000781">
+<nameEn>Grande Cache</nameEn>
+<nameFr>Grande Cache</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000782">
+<nameEn>Kapuskasing</nameEn>
+<nameFr>Kapuskasing</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000783">
+<nameEn>Mont-Joli</nameEn>
+<nameFr>Mont-Joli</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000784">
+<nameEn>Matane</nameEn>
+<nameFr>Matane</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000785">
+<nameEn>Toronto Island</nameEn>
+<nameFr>Toronto Island</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000786">
+<nameEn>Mississauga</nameEn>
+<nameFr>Mississauga</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000787">
+<nameEn>Caledon</nameEn>
+<nameFr>Caledon</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000788">
+<nameEn>Regina</nameEn>
+<nameFr>Regina</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000789">
+<nameEn>Halton Hills</nameEn>
+<nameFr>Halton Hills</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000790">
+<nameEn>Gore Bay</nameEn>
+<nameFr>Gore Bay</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000791">
+<nameEn>Detah</nameEn>
+<nameFr>Detah</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000792">
+<nameEn>Victoria (Hartland)</nameEn>
+<nameFr>Victoria (Hartland)</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000793">
+<nameEn>Salluit</nameEn>
+<nameFr>Salluit</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000794">
+<nameEn>Slave Lake</nameEn>
+<nameFr>Slave Lake</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000795">
+<nameEn>Sandspit</nameEn>
+<nameFr>Sandspit</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000796">
+<nameEn>Sarnia</nameEn>
+<nameFr>Sarnia</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000797">
+<nameEn>Saskatoon</nameEn>
+<nameFr>Saskatoon</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000798">
+<nameEn>Coral Harbour</nameEn>
+<nameFr>Coral Harbour</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000799">
+<nameEn>Port Hardy</nameEn>
+<nameFr>Port Hardy</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000800">
+<nameEn>Sept-Îles</nameEn>
+<nameFr>Sept-Îles</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000801">
+<nameEn>Port-Cartier</nameEn>
+<nameFr>Port-Cartier</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000802">
+<nameEn>Annapolis Royal</nameEn>
+<nameFr>Annapolis Royal</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000803">
+<nameEn>Greenwood</nameEn>
+<nameFr>Greenwood</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000804">
+<nameEn>Bridgetown</nameEn>
+<nameFr>Bridgetown</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000805">
+<nameEn>Mackenzie</nameEn>
+<nameFr>Mackenzie</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000806">
+<nameEn>Bathurst</nameEn>
+<nameFr>Bathurst</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000807">
+<nameEn>Campbellton</nameEn>
+<nameFr>Campbellton</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000808">
+<nameEn>Dalhousie</nameEn>
+<nameFr>Dalhousie</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000809">
+<nameEn>Charlo</nameEn>
+<nameFr>Charlo</nameFr>
+<provinceCode>NB</provinceCode>
+</site>
+<site code="s0000810">
+<nameEn>Pointe-à-la-Croix</nameEn>
+<nameFr>Pointe-à-la-Croix</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000811">
+<nameEn>Carleton-sur-Mer</nameEn>
+<nameFr>Carleton-sur-Mer</nameFr>
+<provinceCode>QC</provinceCode>
+</site>
+<site code="s0000812">
+<nameEn>Tatamagouche</nameEn>
+<nameFr>Tatamagouche</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000813">
+<nameEn>Truro</nameEn>
+<nameFr>Truro</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000814">
+<nameEn>Economy</nameEn>
+<nameFr>Economy</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000815">
+<nameEn>Orangeville</nameEn>
+<nameFr>Orangeville</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000816">
+<nameEn>Fort McPherson</nameEn>
+<nameFr>Fort McPherson</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000817">
+<nameEn>Tulita</nameEn>
+<nameFr>Tulita</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000818">
+<nameEn>Fort Good Hope</nameEn>
+<nameFr>Fort Good Hope</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000819">
+<nameEn>Ignace</nameEn>
+<nameFr>Ignace</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000820">
+<nameEn>Gjoa Haven</nameEn>
+<nameFr>Gjoa Haven</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000821">
+<nameEn>Alert</nameEn>
+<nameFr>Alert</nameFr>
+<provinceCode>NU</provinceCode>
+</site>
+<site code="s0000822">
+<nameEn>Moose Jaw</nameEn>
+<nameFr>Moose Jaw</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000823">
+<nameEn>Old Crow</nameEn>
+<nameFr>Old Crow</nameFr>
+<provinceCode>YT</provinceCode>
+</site>
+<site code="s0000824">
+<nameEn>Pincher Creek</nameEn>
+<nameFr>Pincher Creek</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000825">
+<nameEn>Whitehorse</nameEn>
+<nameFr>Whitehorse</nameFr>
+<provinceCode>YT</provinceCode>
+</site>
+<site code="s0000826">
+<nameEn>Sandy Lake</nameEn>
+<nameFr>Sandy Lake</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000827">
+<nameEn>St. Peters Bay</nameEn>
+<nameFr>St. Peters Bay</nameFr>
+<provinceCode>PE</provinceCode>
+</site>
+<site code="s0000828">
+<nameEn>Stewart</nameEn>
+<nameFr>Stewart</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000829">
+<nameEn>Stettler</nameEn>
+<nameFr>Stettler</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000830">
+<nameEn>Tuktoyaktuk</nameEn>
+<nameFr>Tuktoyaktuk</nameFr>
+<provinceCode>NT</provinceCode>
+</site>
+<site code="s0000831">
+<nameEn>Delta</nameEn>
+<nameFr>Delta</nameFr>
+<provinceCode>MB</provinceCode>
+</site>
+<site code="s0000832">
+<nameEn>Churchill Falls</nameEn>
+<nameFr>Churchill Falls</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000833">
+<nameEn>Wainwright</nameEn>
+<nameFr>Wainwright</nameFr>
+<provinceCode>AB</provinceCode>
+</site>
+<site code="s0000834">
+<nameEn>Bella Bella</nameEn>
+<nameFr>Bella Bella</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000835">
+<nameEn>Lloydminster</nameEn>
+<nameFr>Lloydminster</nameFr>
+<provinceCode>SK</provinceCode>
+</site>
+<site code="s0000843">
+<nameEn>Sudbury (Greater)</nameEn>
+<nameFr>Sudbury (Grand)</nameFr>
+<provinceCode>ON</provinceCode>
+</site>
+<site code="s0000845">
+<nameEn>Cummins Lakes Park</nameEn>
+<nameFr>Cummins Lakes Park</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000846">
+<nameEn>Coquihalla Highway - Hope to Merritt</nameEn>
+<nameFr>route de Coquihalla - de Hope à Merritt</nameFr>
+<provinceCode>HEF</provinceCode>
+</site>
+<site code="s0000847">
+<nameEn>Coquihalla Highway - Merritt to Kamloops</nameEn>
+<nameFr>route de Coquihalla - de Merritt à Kamloops</nameFr>
+<provinceCode>HEF</provinceCode>
+</site>
+<site code="s0000849">
+<nameEn>Highway 3 - Hope to Princeton via Allison Pass</nameEn>
+<nameFr>route 3 - de Hope à Princeton via le col Allison</nameFr>
+<provinceCode>HEF</provinceCode>
+</site>
+<site code="s0000850">
+<nameEn>Highway 3 - Paulson Summit to Kootenay Pass</nameEn>
+<nameFr>route 3 - du sommet Paulson au col Kootenay</nameFr>
+<provinceCode>HEF</provinceCode>
+</site>
+<site code="s0000851">
+<nameEn>Highway 97 - Clinton to 100 Mile House via Begbie Summit</nameEn>
+<nameFr>route 97 - de Clinton à 100 Mile House via le sommet Begbie</nameFr>
+<provinceCode>HEF</provinceCode>
+</site>
+<site code="s0000852">
+<nameEn>Highway 97 - Pine Pass</nameEn>
+<nameFr>route 97 - col Pine</nameFr>
+<provinceCode>HEF</provinceCode>
+</site>
+<site code="s0000853">
+<nameEn>Okanagan Connector - Merritt to Kelowna</nameEn>
+<nameFr>route de liaison Okanagan - de Merritt à Kelowna</nameFr>
+<provinceCode>HEF</provinceCode>
+</site>
+<site code="s0000854">
+<nameEn>Sea to Sky - Squamish to Whistler</nameEn>
+<nameFr>Sea to Sky - de Squamish à Whistler</nameFr>
+<provinceCode>HEF</provinceCode>
+</site>
+<site code="s0000856">
+<nameEn>Trans-Canada Highway - Eagle Pass to Rogers Pass</nameEn>
+<nameFr>route Transcanadienne - du col Eagle au col Rogers</nameFr>
+<provinceCode>HEF</provinceCode>
+</site>
+<site code="s0000857">
+<nameEn>L'Anse-au-Loup</nameEn>
+<nameFr>L'Anse-au-Loup</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000858">
+<nameEn>Rigolet</nameEn>
+<nameFr>Rigolet</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000859">
+<nameEn>Cartwright Junction (Trans-Labrador Hwy)</nameEn>
+<nameFr>Cartwright Junction (Rte Trans-Labrador)</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000860">
+<nameEn>Gull Island Rapids (Trans-Labrador Hwy)</nameEn>
+<nameFr>Gull Island Rapids (Rte Trans-Labrador)</nameFr>
+<provinceCode>NL</provinceCode>
+</site>
+<site code="s0000861">
+<nameEn>Eskasoni</nameEn>
+<nameFr>Eskasoni</nameFr>
+<provinceCode>NS</provinceCode>
+</site>
+<site code="s0000862">
+<nameEn>Richmond</nameEn>
+<nameFr>Richmond</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000863">
+<nameEn>Duncan</nameEn>
+<nameFr>Duncan</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000864">
+<nameEn>Qualicum Beach</nameEn>
+<nameFr>Qualicum Beach</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000865">
+<nameEn>West Vancouver</nameEn>
+<nameFr>West Vancouver</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000866">
+<nameEn>Langley</nameEn>
+<nameFr>Langley</nameFr>
+<provinceCode>BC</provinceCode>
+</site>
+<site code="s0000867">
+<nameEn>Yellowhead Highway - Tête Jaune Cache to the Alberta Border</nameEn>
+<nameFr>Route Yellowhead - de Tête Jaune Cache à la frontière de l'Alberta</nameFr>
+<provinceCode>HEF</provinceCode>
+</site>
+<site code="s0000868">
+<nameEn>Malahat Highway - Goldstream to Mill Bay</nameEn>
+<nameFr>Route Malahat - de Goldstream à Mill Bay</nameFr>
+<provinceCode>HEF</provinceCode>
+</site>
+</siteList>
+            `;
+            
+            // Quebec station coordinates lookup table
+            const quebecStationCoords = {
+                's0000027': { lat: 48.9667, lng: -66.3333 }, // Murdochville
+                's0000028': { lat: 48.3500, lng: -69.4000 }, // Escoumins
+                's0000029': { lat: 46.6833, lng: -73.9167 }, // Saint-Michel-des-Saints
+                's0000044': { lat: 45.3167, lng: -73.8667 }, // Beauharnois
+                's0000046': { lat: 45.3833, lng: -73.5167 }, // Candiac
+                's0000048': { lat: 45.4167, lng: -73.4667 }, // La Prairie
+                's0000049': { lat: 45.3667, lng: -73.5667 }, // Saint-Constant
+                's0000050': { lat: 45.4000, lng: -73.5667 }, // Sainte-Catherine
+                's0000051': { lat: 45.2667, lng: -73.6167 }, // Saint-Rémi
+                's0000052': { lat: 45.4000, lng: -72.7333 }, // Granby
+                's0000053': { lat: 45.2000, lng: -72.7500 }, // Cowansville
+                's0000054': { lat: 46.0500, lng: -71.9667 }, // Victoriaville
+                's0000055': { lat: 45.8500, lng: -74.0833 }, // Prévost
+                's0000056': { lat: 45.8167, lng: -73.9000 }, // Sainte-Sophie
+                's0000057': { lat: 45.8500, lng: -73.7667 }, // Saint-Lin-Laurentides
+                's0000058': { lat: 45.8833, lng: -74.1667 }, // Saint-Sauveur
+                's0000059': { lat: 45.6333, lng: -72.9500 }, // Saint-Hyacinthe
+                's0000060': { lat: 45.4333, lng: -73.1667 }, // Marieville
+                's0000061': { lat: 45.4667, lng: -74.3000 }, // Rigaud
+                's0000062': { lat: 45.4000, lng: -74.1333 }, // Saint-Lazare
+                's0000063': { lat: 45.2833, lng: -72.9833 }, // Farnham
+                's0000064': { lat: 46.1000, lng: -71.3000 }, // Thetford Mines
+                // Adding more Quebec stations with coordinates
+                's0000065': { lat: 67.8333, lng: -115.0833 }, // Kugaaruk (NU - but in the XML as QC)
+                's0000066': { lat: 53.5000, lng: -114.5000 }, // Highvale (AB - but in the XML as QC)
+                's0000067': { lat: 55.1333, lng: -102.9333 }, // Pelican Narrows (SK - but in the XML as QC)
+                's0000068': { lat: 51.0500, lng: -113.4000 }, // Strathmore (AB - but in the XML as QC)
+                's0000069': { lat: 45.6167, lng: -74.6167 }, // Hawkesbury (ON - but in the XML as QC)
+                's0000070': { lat: 45.3167, lng: -74.6333 }, // Alexandria (ON - but in the XML as QC)
+                's0000071': { lat: 45.0167, lng: -74.7333 }, // Cornwall (ON - but in the XML as QC)
+                's0000072': { lat: 44.9000, lng: -75.1833 }, // Morrisburg (ON - but in the XML as QC)
+                's0000073': { lat: 45.5667, lng: -78.5333 }, // Algonquin Park (Brent) (ON - but in the XML as QC)
+                's0000074': { lat: 45.5667, lng: -78.5333 }, // Algonquin Park (Lake of Two Rivers) (ON - but in the XML as QC)
+                's0000075': { lat: 45.3833, lng: -78.9333 }, // Oxtongue Lake (ON - but in the XML as QC)
+                's0000076': { lat: 42.9833, lng: -79.2500 }, // Welland (ON - but in the XML as QC)
+                's0000077': { lat: 45.2833, lng: -75.3500 }, // Winchester (ON - but in the XML as QC)
+                // Major Quebec cities and additional stations
+                's0000078': { lat: 45.5017, lng: -73.5673 }, // Montreal
+                's0000079': { lat: 46.8139, lng: -71.2080 }, // Quebec City
+                's0000080': { lat: 45.4500, lng: -73.5667 }, // Longueuil
+                's0000081': { lat: 45.3000, lng: -73.2500 }, // Saint-Jean-sur-Richelieu
+                's0000082': { lat: 45.5667, lng: -73.2167 }, // Laval
+                's0000083': { lat: 45.8833, lng: -72.4833 }, // Drummondville
+                's0000084': { lat: 48.4167, lng: -71.0667 }, // Chicoutimi
+                's0000085': { lat: 46.3500, lng: -72.5500 }, // Trois-Rivières
+                's0000086': { lat: 45.6167, lng: -73.5167 }, // Repentigny
+                's0000087': { lat: 45.5333, lng: -73.5167 }, // Brossard
+                's0000088': { lat: 45.4500, lng: -73.4333 }, // Saint-Hubert
+                's0000089': { lat: 45.5167, lng: -73.6500 }, // Dorval
+                's0000090': { lat: 45.4667, lng: -73.7500 }, // Pointe-Claire
+                's0000091': { lat: 45.4333, lng: -73.8667 }, // Vaudreuil-Dorion
+                's0000092': { lat: 45.2833, lng: -74.1333 }, // Salaberry-de-Valleyfield
+                's0000093': { lat: 45.2667, lng: -74.0833 }, // Beauharnois
+                's0000094': { lat: 45.3167, lng: -73.2667 }, // Châteauguay
+                's0000095': { lat: 45.3000, lng: -73.2667 }, // Mercier
+                's0000096': { lat: 45.2500, lng: -73.1167 }, // Saint-Constant
+                's0000097': { lat: 45.2333, lng: -73.1167 }, // Delson
+                's0000098': { lat: 45.2167, lng: -73.1167 }, // Candiac
+                's0000099': { lat: 45.2000, lng: -73.1167 }, // La Prairie
+                's0000100': { lat: 45.1833, lng: -73.1167 }  // Brossard
+            };
+
+            // Parse as XML
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
+            const siteElements = xmlDoc.getElementsByTagName('site');
+            stationList = [];
+            for (let i = 0; i < siteElements.length; i++) {
+                const site = siteElements[i];
+                const code = site.getAttribute('code');
+                const nameEn = site.querySelector('nameEn')?.textContent || '';
+                const nameFr = site.querySelector('nameFr')?.textContent || '';
+                const province = site.querySelector('provinceCode')?.textContent || '';
+                if (code && (nameEn || nameFr)) {
+                    const coords = quebecStationCoords[code];
+                    stationList.push({
+                        name: nameEn || nameFr,
+                        nameFr: nameFr || nameEn,
+                        code: code,
+                        province: province,
+                        lat: coords ? coords.lat : null,
+                        lng: coords ? coords.lng : null,
+                        source: 'Embedded XML'
+                    });
+                }
+            }
+        }
+        
+        function searchStations() {
+            const searchInput = document.getElementById('stationSearch');
+            const resultsDiv = document.getElementById('stationSearchResults');
+            const searchTerm = searchInput.value.trim().toLowerCase();
+            
+            if (!searchTerm) {
+                // Show all stations when search is empty
+                showAllStations();
+                return;
+            }
+            
+            const filteredStations = stationList.filter(station => 
+                station.name.toLowerCase().includes(searchTerm) ||
+                station.nameFr.toLowerCase().includes(searchTerm) ||
+                station.code.toLowerCase().includes(searchTerm)
+            );
+            
+            if (filteredStations.length === 0) {
+                resultsDiv.innerHTML = '<div style="padding: 10px; color: #666;">No stations found</div>';
+            } else {
+                displayStationResults(filteredStations, `Search Results (${filteredStations.length} stations)`);
+            }
+            
+            resultsDiv.style.display = 'block';
+        }
+        
+        function showAllStations() {
+            const resultsDiv = document.getElementById('stationSearchResults');
+            displayStationResults(stationList, `All Quebec Weather Stations (${stationList.length} stations)`);
+            resultsDiv.style.display = 'block';
+        }
+        
+        function displayStationResults(stations, title) {
+            const resultsDiv = document.getElementById('stationSearchResults');
+            const debugDiv = document.getElementById('stationDebugInfo');
+            
+            let resultsHTML = `
+                <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-weight: bold;">
+                    ${title}
+                </div>
+            `;
+            
+            stations.forEach(station => {
+                const directLink = `TEST.html?station=${station.code}`;
+                resultsHTML += `
+                    <div style="padding: 8px; border-bottom: 1px solid #eee; background: white;">
+                        <div style="cursor: pointer; margin-bottom: 5px;" onclick="selectStation('${station.code}', '${station.name}')">
+                            <strong>${station.name}</strong> (${station.nameFr})<br>
+                            <small style="color: #666;">Code: ${station.code}</small>
+                        </div>
+                        <div style="font-size: 12px; color: #007bff;">
+                            <a href="${directLink}" target="_blank">${directLink}</a> - View weather data for ${station.name}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = resultsHTML;
+            
+            // Show debug info
+            debugDiv.innerHTML = `
+                <strong>Debug Info:</strong><br>
+                Total stations loaded: ${stationList.length}<br>
+                Source: ${stationList.length > 0 && stationList[0].source ? 'Environment Canada XML' : 'Fallback list'}<br>
+                Last updated: ${new Date().toLocaleString()}<br>
+                <button onclick="showDebugDetails()" style="background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 3px; margin-top: 5px; font-size: 11px;">Show Details</button>
+            `;
+            debugDiv.style.display = 'block';
+        }
+        
+        async function reloadStationList() {
+            const reloadBtn = document.querySelector('button[onclick="reloadStationList()"]');
+            const originalText = reloadBtn.textContent;
+            
+            reloadBtn.disabled = true;
+            reloadBtn.textContent = '🔄 Loading...';
+            
+            try {
+                await loadStationList();
+                showAllStations(); // Refresh the display
+                console.log('Station list reloaded successfully');
+            } catch (error) {
+                console.error('Failed to reload station list:', error);
+                showError('Failed to reload station list: ' + error.message);
+            } finally {
+                reloadBtn.disabled = false;
+                reloadBtn.textContent = originalText;
+            }
+        }
+        
+
+        
+        // Add hashCode method for string hashing
+        String.prototype.hashCode = function() {
+            let hash = 0;
+            if (this.length === 0) return hash;
+            for (let i = 0; i < this.length; i++) {
+                const char = this.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32-bit integer
+            }
+            return hash;
+        };
+        
+        async function testXMLUrl() {
+            const debugDiv = document.getElementById('stationDebugInfo');
+            debugDiv.innerHTML = '<strong>Testing XML URL...</strong><br>Trying multiple proxies...';
+            debugDiv.style.display = 'block';
+            
+            try {
+                // Try multiple CORS proxies
+                const proxies = [
+                    'https://api.allorigins.win/raw?url=',
+                    'https://cors-anywhere.herokuapp.com/',
+                    'https://thingproxy.freeboard.io/fetch/',
+                    'https://corsproxy.io/?'
+                ];
+                
+                let response = null;
+                let workingProxy = '';
+                
+                for (const proxy of proxies) {
+                    try {
+                        debugDiv.innerHTML = `<strong>Testing XML URL...</strong><br>Trying proxy: ${proxy}...`;
+                        const url = proxy + encodeURIComponent('https://dd.meteo.gc.ca/today/citypage_weather/siteList.xml');
+                        response = await fetch(url, { 
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/xml, text/xml, */*',
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            workingProxy = proxy;
+                            break;
+                        }
+                    } catch (error) {
+                        console.log(`Proxy ${proxy} failed:`, error.message);
+                    }
+                }
+                
+                if (!response || !response.ok) {
+                    throw new Error('All proxies failed to access Environment Canada XML');
+                }
+                
+                const xmlContent = await response.text();
+                
+                debugDiv.innerHTML = `
+                    <strong>XML Test Results:</strong><br>
+                    Working proxy: ${workingProxy}<br>
+                    Content length: ${xmlContent.length}<br>
+                    Contains &lt;site&gt; tags: ${xmlContent.includes('<site') ? 'YES' : 'NO'}<br>
+                    Contains &lt;nameEn&gt; tags: ${xmlContent.includes('<nameEn') ? 'YES' : 'NO'}<br>
+                    Contains &lt;provinceCode&gt; tags: ${xmlContent.includes('<provinceCode') ? 'YES' : 'NO'}<br>
+                    First 200 chars: <pre>${xmlContent.substring(0, 200)}</pre><br>
+                    Last 200 chars: <pre>${xmlContent.substring(xmlContent.length - 200)}</pre><br>
+                    <button onclick="document.getElementById('stationDebugInfo').style.display='none'" style="background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 3px; margin-top: 5px; font-size: 11px;">Close</button>
+                `;
+                
+            } catch (error) {
+                debugDiv.innerHTML = `
+                    <strong>Error testing XML:</strong><br>
+                    ${error.message}<br>
+                    <button onclick="document.getElementById('stationDebugInfo').style.display='none'" style="background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 3px; margin-top: 5px; font-size: 11px;">Close</button>
+                `;
+            }
+        }
+        
+        function showDebugDetails() {
+            const debugDiv = document.getElementById('stationDebugInfo');
+            const details = stationList.slice(0, 10).map(station => 
+                `${station.name} (${station.code}) - ${station.province}`
+            ).join('<br>');
+            
+            debugDiv.innerHTML = `
+                <strong>Debug Details:</strong><br>
+                Total stations: ${stationList.length}<br>
+                First 10 stations:<br>
+                ${details}<br>
+                <button onclick="displayStationResults(stationList, 'All Quebec Weather Stations (${stationList.length} stations)')" style="background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 3px; margin-top: 5px; font-size: 11px;">Back to Results</button>
+            `;
+        }
+        
+        let map = null;
+        let markers = [];
+        
+        function showStationMap() {
+            const mapDiv = document.getElementById('stationMap');
+            mapDiv.style.display = 'block';
+            
+            if (!map) {
+                // Initialize map centered on Quebec
+                map = L.map('stationMap').setView([46.8139, -71.2080], 7);
+                
+                // Add OpenStreetMap tiles
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+                
+                // Add markers for Quebec stations
+                addStationMarkers();
+            }
+        }
+        
+        function hideStationMap() {
+            const mapDiv = document.getElementById('stationMap');
+            mapDiv.style.display = 'none';
+        }
+        
+        function addStationMarkers() {
+            // Clear existing markers
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+
+            console.log('Adding station markers...');
+            console.log('Total stations:', stationList.length);
+            
+            let addedMarkers = 0;
+            // Only add markers for stations with coordinates
+            stationList.forEach(station => {
+                if (station.lat && station.lng) {
+                    console.log(`Adding marker for ${station.name} at ${station.lat}, ${station.lng}`);
+                    const marker = L.marker([station.lat, station.lng])
+                        .bindPopup(`
+                            <strong>${station.name}</strong> (${station.nameFr})<br>
+                            <small>Code: ${station.code}</small><br>
+                            <a href="TEST.html?station=${station.code}" target="_blank">View Weather Data</a>
+                        `)
+                        .addTo(map);
+                    markers.push(marker);
+                    addedMarkers++;
+                }
+            });
+
+            console.log(`Added ${addedMarkers} markers to the map`);
+            
+            // Show summary of Quebec stations
+            const quebecStations = stationList.filter(s => s.province === 'QC');
+            const quebecWithCoords = quebecStations.filter(s => s.lat && s.lng);
+            console.log(`Quebec stations: ${quebecStations.length} total, ${quebecWithCoords.length} with coordinates`);
+            
+            if (addedMarkers === 0) {
+                console.log('No stations with coordinates found. Quebec stations with coordinates:');
+                quebecWithCoords.forEach(s => {
+                    console.log(`${s.name}: ${s.lat}, ${s.lng}`);
+                });
+            }
+        }
+        
+        function selectStation(code, name) {
+            const stationInput = document.getElementById('stationInput');
+            const searchInput = document.getElementById('stationSearch');
+            const resultsDiv = document.getElementById('stationSearchResults');
+            
+            stationInput.value = code;
+            searchInput.value = name;
+            resultsDiv.style.display = 'none';
+            
+            // Automatically redirect to the selected station
+            redirectToStation();
+        }
+        
+        function redirectToStation() {
+            const stationInput = document.getElementById('stationInput');
+            const stationNumber = stationInput.value.trim();
+            
+            if (!stationNumber) {
+                showError('Please enter a station number');
+                return;
+            }
+            
+            if (!/^s\d{7}$/i.test(stationNumber)) {
+                showError('Invalid station number format. Expected format: s0000XXX');
+                return;
+            }
+            
+            redirectToLatestStationFile(stationNumber);
+        }
+        
+        // Allow Enter key to trigger scan
+        document.getElementById('urlInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                scanForXML();
+            }
+        });
+        
+        // Initialize station redirect UI and check for URL parameters
+        document.addEventListener('DOMContentLoaded', function() {
+            addStationRedirectUI();
+            loadStationList(); // Load the station list from Environment Canada
+            checkForStationRedirect();
+        });
+    </script>
+</body>
+</html>
